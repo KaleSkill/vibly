@@ -1,92 +1,114 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCartStore } from '@/store/useCartStore';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Product } from '@/types/product';
 import { ShoppingCart } from 'lucide-react';
+import { formatPrice } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
-interface ProductCardProps {
-  product: Product;
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discountedPrice: number;
+  discountPercent: number;
+  variants: Array<{
+    images: string[];
+  }>;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const addItem = useCartStore((state) => state.addItem);
+export function ProductCard({ product }: { product: Product }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const { toast } = useToast();
 
-  const firstVariant = product.variants[0];
-  const firstImage = firstVariant?.images[0];
-  const firstSize = firstVariant?.sizes[0];
+  // Image carousel effect on hover
+  useEffect(() => {
+    if (!isHovered) {
+      setCurrentImageIndex(0);
+      return;
+    }
+
+    const images = product.variants[0]?.images || [];
+    if (images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 1000); // Change image every 1 second
+
+    return () => clearInterval(interval);
+  }, [isHovered, product.variants]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigation when clicking the add to cart button
-    if (firstVariant && firstSize) {
-      addItem({
-        productId: product._id,
-        name: product.name,
-        price: product.discountPrice || product.price,
-        quantity: 1,
-        size: firstSize.size,
-        color: firstVariant.colorName,
-        image: firstImage,
-      });
-    }
+    e.preventDefault();
+    toast({
+      title: "Added to Cart",
+      description: "Product has been added to your cart",
+    });
   };
 
   return (
-    <Link href={`/products/${product._id}`}>
-      <Card className="group h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
-        <div className="relative">
-          {/* Product Image */}
-          <div className="aspect-square overflow-hidden">
-            {firstImage && (
+    <Card className="group overflow-hidden transition-all hover:shadow-lg">
+      <CardContent className="p-0">
+        <Link href={`/products/${product._id}`}>
+          <div 
+            className="relative aspect-square overflow-hidden bg-gray-50"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => {
+              setIsHovered(false);
+              setCurrentImageIndex(0);
+            }}
+          >
+            {product.variants[0]?.images.map((image, index) => (
               <Image
-                src={firstImage}
+                key={image}
+                src={image}
                 alt={product.name}
                 fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                className={`object-cover transition-opacity duration-300 ${
+                  currentImageIndex === index ? 'opacity-100' : 'opacity-0'
+                }`}
+                priority={index === 0}
               />
+            ))}
+            
+            {product.discountPercent > 0 && (
+              <Badge className="absolute top-2 right-2 bg-green-500 text-white">
+                {product.discountPercent}% OFF
+              </Badge>
             )}
           </div>
 
-          {/* Sale Badge */}
-          {product.discountPrice && (
-            <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-semibold">
-              Sale
-            </span>
-          )}
+          <div className="p-4">
+            <h3 className="font-medium text-base line-clamp-1 mb-2">
+              {product.name}
+            </h3>
 
-          {/* Quick Add Button - Appears on Hover */}
-          <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg font-bold">
+                {formatPrice(product.discountedPrice)}
+              </span>
+              {product.discountPercent > 0 && (
+                <span className="text-sm text-muted-foreground line-through">
+                  {formatPrice(product.price)}
+                </span>
+              )}
+            </div>
+
             <Button 
-              className="w-full bg-white/90 backdrop-blur-sm hover:bg-white text-black shadow-lg"
+              className="w-full bg-black hover:bg-black/90"
               onClick={handleAddToCart}
-              size="sm"
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
+              <ShoppingCart className="mr-2 h-4 w-4" />
               Add to Cart
             </Button>
           </div>
-        </div>
-
-        {/* Product Info */}
-        <div className="p-4">
-          <h3 className="font-medium text-gray-900 group-hover:text-primary transition-colors truncate">
-            {product.name}
-          </h3>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-lg font-bold text-gray-900">
-              ${product.discountPrice || product.price}
-            </span>
-            {product.discountPrice && (
-              <span className="text-sm text-gray-500 line-through">
-                ${product.price}
-              </span>
-            )}
-          </div>
-        </div>
-      </Card>
-    </Link>
+        </Link>
+      </CardContent>
+    </Card>
   );
 } 
