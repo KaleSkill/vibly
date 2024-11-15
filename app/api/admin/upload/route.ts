@@ -1,45 +1,58 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import cloudinary from '@/utils/cloudinary';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.role === 'admin') {
+    if (session?.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await req.formData();
-    const files = formData.getAll('files');
-
-    const uploadPromises = files.map(async (file: any) => {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'products',
-            resource_type: 'auto',
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result?.secure_url);
-          }
-        );
-
-        uploadStream.end(buffer);
-      });
-    });
-
-    const urls = await Promise.all(uploadPromises);
+    const file = formData.get('file') as File;
     
-    return NextResponse.json({ urls });
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'banners',
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error) {
+            reject(NextResponse.json(
+              { error: 'Upload failed' },
+              { status: 500 }
+            ));
+          } else {
+            resolve(NextResponse.json(result));
+          }
+        }
+      );
+
+      uploadStream.end(buffer);
+    });
   } catch (error) {
-    console.error('Error uploading images:', error);
+    console.error('Error uploading file:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to upload file' },
       { status: 500 }
     );
   }

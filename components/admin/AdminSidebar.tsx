@@ -34,8 +34,8 @@ const menuItems = [
     icon: Palette,
   },
   {
-    title: 'Banners',
-    href: '/admin/banners',
+    title: 'Banner',
+    href: '/admin/banner',
     icon: Image,
   },
   {
