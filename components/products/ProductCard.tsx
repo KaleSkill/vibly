@@ -54,7 +54,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg">
       <CardContent className="p-0">
-        <Link href={`/products/${product._id}`}>
+        <Link href={`/products/${product._id}`} className="block">
           <div 
             className="relative aspect-square overflow-hidden bg-gray-50"
             onMouseEnter={() => setIsHovered(true)}

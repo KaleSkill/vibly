@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { SlidersHorizontal, X } from 'lucide-react';
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Product {
   _id: string;
@@ -56,6 +57,8 @@ const sortOptions: SortOption[] = [
   { value: 'recommended', label: 'Recommended' },
   { value: 'price-low-high', label: 'Price: Low to High' },
   { value: 'price-high-low', label: 'Price: High to Low' },
+  { value: 'name-a-z', label: 'Name: A to Z' },
+  { value: 'name-z-a', label: 'Name: Z to A' },
   { value: 'newest', label: "What's New" },
 ];
 
@@ -137,9 +140,11 @@ export function ProductsPage() {
         result.sort((a, b) => b.name.localeCompare(a.name));
         break;
       case 'newest':
-        result.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case 'recommended':
+      default:
+        // Keep original order for recommended
         break;
     }
 
@@ -230,7 +235,89 @@ export function ProductsPage() {
   );
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-60" />
+            <Skeleton className="h-5 w-36" />
+          </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-11 w-[180px] rounded-lg" />
+            <Skeleton className="h-11 w-[100px] lg:hidden rounded-lg" />
+          </div>
+        </div>
+
+        <div className="flex gap-8">
+          {/* Desktop Filters Skeleton */}
+          <div className="hidden lg:block w-64 flex-shrink-0">
+            <div className="sticky top-8 space-y-8 rounded-xl bg-white p-6 shadow-sm">
+              {/* Price Range Skeleton */}
+              <div className="space-y-4">
+                <Skeleton className="h-6 w-28" />
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton 
+                      key={i} 
+                      className="h-11 w-full rounded-lg" 
+                      style={{ opacity: 1 - i * 0.1 }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Colors Skeleton */}
+              <div className="space-y-4">
+                <Skeleton className="h-6 w-20" />
+                <div className="grid grid-cols-2 gap-3">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton 
+                      key={i} 
+                      className="h-11 rounded-lg"
+                      style={{ opacity: 0.95 - i * 0.1 }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Grid Skeleton */}
+          <div className="flex-1">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="group">
+                  <div className="space-y-4 rounded-xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                    <div className="relative">
+                      <Skeleton className="aspect-square w-full" />
+                      <div className="absolute top-3 right-3">
+                        <Skeleton className="h-7 w-16 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      <div className="space-y-3">
+                        <Skeleton className="h-6 w-5/6" />
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-7 w-28" />
+                          <Skeleton className="h-5 w-20" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-11 w-full rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile View Skeleton */}
+        <div className="lg:hidden mt-8">
+          <Skeleton className="h-11 w-full rounded-lg" />
+        </div>
+      </div>
+    );
   }
 
   return (
