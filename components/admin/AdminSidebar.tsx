@@ -10,6 +10,9 @@ import {
   Palette,
   Image,
   ShoppingCart,
+  Users,
+  ShoppingBag,
+  ImageIcon,
 } from 'lucide-react';
 
 const menuItems = [
@@ -42,6 +45,11 @@ const menuItems = [
     title: 'Orders',
     href: '/admin/orders',
     icon: ShoppingCart,
+  },
+  {
+    title: 'Customers',
+    href: '/admin/customers',
+    icon: Users,
   },
 ];
 

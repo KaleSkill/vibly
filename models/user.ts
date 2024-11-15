@@ -1,22 +1,27 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  name: String,
-  email: {
-    type: String,
-    unique: true,
-    required: true
+  name: { 
+    type: String, 
+    required: true 
   },
-  image: String,
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
+  email: { 
+    type: String, 
+    required: true,
+    unique: true 
+  },
+  role: { 
+    type: String, 
     default: 'user',
-    required: true
+    enum: ['user', 'admin'] 
   },
-  emailVerified: Date
-}, {
-  timestamps: true
+  status: {
+    type: String,
+    default: 'active',
+    enum: ['active', 'inactive']
+  }
+}, { 
+  timestamps: true 
 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
