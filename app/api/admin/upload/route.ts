@@ -32,14 +32,17 @@ export async function POST(req: Request) {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'banners',
+          folder: 'products',
           resource_type: 'auto',
+          allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+          transformation: [{ quality: 'auto:best' }]
         },
         (error, result) => {
           if (error) {
-            reject(NextResponse.json(
+            console.error('Cloudinary upload error:', error);
+            resolve(NextResponse.json(
               { error: 'Upload failed' },
-              { status: 500 }
+              { status: 400 }
             ));
           } else {
             resolve(NextResponse.json(result));
@@ -49,6 +52,7 @@ export async function POST(req: Request) {
 
       uploadStream.end(buffer);
     });
+
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json(

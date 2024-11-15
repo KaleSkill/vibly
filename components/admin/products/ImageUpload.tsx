@@ -1,70 +1,59 @@
 'use client';
 
-import { useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { ImagePlus, X, Upload } from 'lucide-react';
+import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface ImageUploadProps {
-  onChange: (value: string[]) => void;
   value: string[];
+  onChange: (value: string[]) => void;
 }
 
-export function ImageUpload({ onChange, value }: ImageUploadProps) {
+export function ImageUpload({ value, onChange }: ImageUploadProps) {
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const onUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+
+    setIsUploading(true);
+
     try {
-      // Show loading toast
-      toast({
-        title: "Uploading...",
-        description: "Please wait while we upload your images",
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        return data.secure_url;
       });
 
-      // Create FormData
-      const formData = new FormData();
-      acceptedFiles.forEach((file) => {
-        formData.append('files', file);
-      });
-
-      // Upload files
-      const response = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
-
-      const data = await response.json();
-      
-      // Update form with new URLs
-      onChange([...value, ...data.urls]);
-
-      toast({
-        title: "Success",
-        description: "Images uploaded successfully",
-      });
+      const uploadedUrls = await Promise.all(uploadPromises);
+      onChange([...value, ...uploadedUrls]);
     } catch (error) {
-      console.error('Error uploading images:', error);
       toast({
         title: "Error",
         description: "Failed to upload images",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   }, [onChange, value, toast]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
-    },
-    maxSize: 5242880, // 5MB
-    multiple: true
-  });
 
   const onRemove = useCallback((url: string) => {
     onChange(value.filter((current) => current !== url));
@@ -72,52 +61,47 @@ export function ImageUpload({ onChange, value }: ImageUploadProps) {
 
   return (
     <div className="space-y-4">
-      <div 
-        {...getRootProps()} 
-        className={cn(
-          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-          isDragActive ? "border-primary bg-primary/5" : "border-gray-300 hover:border-primary",
-        )}
-      >
-        <input {...getInputProps()} />
-        <div className="flex flex-col items-center gap-2">
-          <Upload className={cn(
-            "h-10 w-10 transition-colors",
-            isDragActive ? "text-primary" : "text-gray-400"
-          )} />
-          {isDragActive ? (
-            <p className="text-primary font-medium">Drop the files here...</p>
+      <div className="flex items-center gap-4">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => document.getElementById('variant-image-input')?.click()}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
-            <>
-              <p className="font-medium">Drag & drop images here</p>
-              <p className="text-sm text-muted-foreground">
-                or click to select files
-              </p>
-            </>
+            <ImagePlus className="h-4 w-4 mr-2" />
           )}
-          <p className="text-xs text-muted-foreground mt-2">
-            Supported formats: JPEG, PNG, WebP (up to 5MB)
-          </p>
-        </div>
+          {isUploading ? 'Uploading...' : 'Upload Images'}
+        </Button>
+        <input
+          id="variant-image-input"
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={onUpload}
+          disabled={isUploading}
+        />
       </div>
 
       {value.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {value.map((url) => (
-            <div key={url} className="relative group aspect-square rounded-lg overflow-hidden">
+            <div key={url} className="relative aspect-square rounded-lg overflow-hidden group">
               <Image
-                fill
                 src={url}
-                alt="Product image"
+                alt="Variant"
+                fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   type="button"
-                  onClick={() => onRemove(url)}
                   variant="destructive"
                   size="icon"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => onRemove(url)}
                 >
                   <X className="h-4 w-4" />
                 </Button>

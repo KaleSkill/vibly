@@ -9,23 +9,28 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.role === 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
     const product = await Product.findById(params.id)
       .populate('category')
-      .populate('gender')
       .lean();
-    
+
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(product);
   } catch (error) {
+    console.error('Error fetching product:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to fetch product' },
       { status: 500 }
     );
   }
@@ -37,29 +42,31 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'admin') {
+    if (session?.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
     const data = await req.json();
+
     const product = await Product.findByIdAndUpdate(
       params.id,
       { $set: data },
       { new: true }
     );
-    
+
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(product);
   } catch (error) {
+    console.error('Error updating product:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to update product' },
       { status: 500 }
     );
   }

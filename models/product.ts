@@ -65,7 +65,7 @@ const productSchema = new mongoose.Schema({
   discountedPrice: { 
     type: Number,
     min: 0,
-    default: function() {
+    default: function(this: any) {
       return this.price;
     }
   },
@@ -90,7 +90,7 @@ const productSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'active', 'inactive'],
+    enum: [ 'active', 'inactive'],
     default: 'active'
   }
 }, { 
@@ -106,6 +106,11 @@ productSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Add these indexes to your existing schema
+productSchema.index({ name: 'text' });  // For text search
+productSchema.index({ price: 1 });      // For price sorting
+productSchema.index({ category: 1 });
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
 

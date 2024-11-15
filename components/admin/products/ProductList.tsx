@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash, Eye } from "lucide-react";
+import { Edit, Trash, Eye, MoreHorizontal, Archive, CheckCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,35 +23,48 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Product {
   _id: string;
   name: string;
-  description: string;
   price: number;
-  discountPercent: number;
-  discountedPrice: number;
-  status: 'active' | 'inactive' | 'draft';
-  gender: string;
-  specifications: {
-    material?: string;
-    fit?: string;
-    occasion?: string;
-    pattern?: string;
-    washCare?: string;
-    style?: string;
-    neckType?: string;
-    sleeveType?: string;
+  status: 'active' | 'inactive';
+  category: {
+    _id: string;
+    name: string;
   };
   variants: Array<{
-    colorName: string;
     images: string[];
-    sizes: Array<{
-      size: string;
-      stock: number;
-    }>;
   }>;
 }
+
+interface SortOption {
+  value: string;
+  label: string;
+}
+
+const sortOptions: SortOption[] = [
+  { value: "default", label: "Default" },
+  { value: "name-asc", label: "Name (A-Z)" },
+  { value: "name-desc", label: "Name (Z-A)" },
+  { value: "price-asc", label: "Price (Low to High)" },
+  { value: "price-desc", label: "Price (High to Low)" },
+];
 
 export function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -58,6 +72,14 @@ export function ProductList() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("default");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const router = useRouter();
 
   const fetchProducts = async () => {
     try {
@@ -83,6 +105,66 @@ export function ProductList() {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/admin/categories');
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    let result = [...products];
+
+    if (statusFilter !== 'all') {
+      result = result.filter(product => product.status === statusFilter);
+    }
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      result = result.filter(product => 
+        product.category._id === categoryFilter
+      );
+      if (result.length === 0) {
+        setFilteredProducts([]);
+        return;
+      }
+    }
+
+    if (result.length > 0) {
+      if (searchQuery) {
+        result = result.filter(product =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      if (sortBy && sortBy !== 'default') {
+        const [field, direction] = sortBy.split('-');
+        result.sort((a, b) => {
+          if (field === 'name') {
+            return direction === 'asc' 
+              ? a.name.localeCompare(b.name)
+              : b.name.localeCompare(a.name);
+          } else if (field === 'price') {
+            return direction === 'asc'
+              ? a.price - b.price
+              : b.price - a.price;
+          }
+          return 0;
+        });
+      }
+    }
+
+    setFilteredProducts(result);
+  }, [products, searchQuery, sortBy, categoryFilter, statusFilter]);
+
+  const displayProducts = categoryFilter !== 'all' ? filteredProducts : 
+    (filteredProducts.length > 0 ? filteredProducts : products);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
@@ -121,6 +203,34 @@ export function ProductList() {
     }).format(price);
   };
 
+  const handleStatusChange = async (productId: string, newStatus: 'active' | 'inactive') => {
+    try {
+      const response = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      toast({
+        title: "Success",
+        description: `Product ${newStatus === 'active' ? 'activated' : 'archived'} successfully`,
+      });
+
+      // Refresh the products list
+      fetchProducts();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update product status",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -131,198 +241,185 @@ export function ProductList() {
 
   return (
     <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Image</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product._id}>
-              <TableCell>
-                {product.variants[0]?.images[0] && (
-                  <div className="relative h-16 w-16">
-                    <Image
-                      src={product.variants[0].images[0]}
-                      alt={product.name}
-                      fill
-                      className="rounded-lg object-cover"
-                    />
-                  </div>
-                )}
-              </TableCell>
-              <TableCell className="font-medium">{product.name}</TableCell>
-              <TableCell>
-                {product.discountPercent > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 font-medium">
-                      {formatPrice(product.discountedPrice)}
-                    </span>
-                    <span className="text-xs text-gray-500 line-through">
-                      {formatPrice(product.price)}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="font-medium">{formatPrice(product.price)}</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant={product.status === 'active' ? "default" : "secondary"}
-                  className={cn(
-                    "font-medium",
-                    product.status === 'active' && "bg-green-100 text-green-800",
-                    product.status === 'inactive' && "bg-gray-100 text-gray-800",
-                    product.status === 'draft' && "bg-yellow-100 text-yellow-800"
-                  )}
-                >
-                  {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setIsViewModalOpen(true);
-                    }}
-                    className="hover:text-blue-600 hover:border-blue-600"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="hover:text-green-600 hover:border-green-600"
-                  >
-                    <Link href={`/admin/products/edit/${product._id}`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(product._id)}
-                    className="hover:text-red-600 hover:border-red-600"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
+      <div className="p-4 space-y-4 border-b">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+          <Select
+            value={categoryFilter}
+            onValueChange={setCategoryFilter}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category._id} value={category._id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={sortBy}
+            onValueChange={setSortBy}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by..." />
+            </SelectTrigger>
+            <SelectContent>
+            
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {displayProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            No products found
+            {statusFilter !== 'all' && <> with status "{statusFilter}"</>}
+            {categoryFilter !== 'all' && categories.find(c => c._id === categoryFilter) && 
+              <> in {categories.find(c => c._id === categoryFilter)?.name}</>
+            }
+            {searchQuery && <> matching "{searchQuery}"</>}
+          </p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => {
+              setSearchQuery('');
+              setCategoryFilter('all');
+              setSortBy('default');
+              setStatusFilter('all');
+            }}
+          >
+            Clear Filters
+          </Button>
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Image</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {/* Product Details Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Product Details</DialogTitle>
-          </DialogHeader>
-          
-          {selectedProduct && (
-            <div className="space-y-6">
-              {/* Basic Details */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">{selectedProduct.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedProduct.description}
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Original Price:</span>
-                      <span className="font-medium">{formatPrice(selectedProduct.price)}</span>
+          </TableHeader>
+          <TableBody>
+            {displayProducts.map((product) => (
+              <TableRow key={product._id}>
+                <TableCell>
+                  {product.variants[0]?.images[0] && (
+                    <div className="relative h-12 w-12">
+                      <Image
+                        src={product.variants[0].images[0]}
+                        alt={product.name}
+                        fill
+                        className="rounded-md object-cover"
+                      />
                     </div>
-                    {selectedProduct.discountPercent > 0 && (
-                      <>
-                        <div className="flex justify-between items-center text-red-600">
-                          <span className="text-sm">Discount:</span>
-                          <span>-{selectedProduct.discountPercent}%</span>
-                        </div>
-                        <div className="flex justify-between items-center text-green-600 pt-1 border-t">
-                          <span>Final Price:</span>
-                          <span className="font-bold">{formatPrice(selectedProduct.discountedPrice)}</span>
-                        </div>
-                      </>
+                  )}
+                </TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>{formatPrice(product.price)}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={product.status === 'active' ? "default" : "secondary"}
+                    className={cn(
+                      "px-2 py-1",
+                      product.status === 'active' && "bg-green-100 text-green-800",
+                      product.status === 'inactive' && "bg-yellow-100 text-yellow-800"
                     )}
-                  </div>
-                  <div className="pt-2">
-                    <Badge className="capitalize">{selectedProduct.gender}</Badge>
-                    <Badge variant={selectedProduct.status === 'active' ? 'default' : 'secondary'} className="ml-2 capitalize">
-                      {selectedProduct.status}
-                    </Badge>
-                  </div>
-                </div>
+                  >
+                    {product.status === 'active' ? 'Active' : 'Archived'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[160px]">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/admin/products/view/${product._id}`)}
+                        className="cursor-pointer"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/admin/products/edit/${product._id}`)}
+                        className="cursor-pointer"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Product
+                      </DropdownMenuItem>
+                      {product.status === 'active' ? (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusChange(product._id, 'inactive')}
+                          className="cursor-pointer"
+                        >
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusChange(product._id, 'active')}
+                          className="cursor-pointer"
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Activate
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => handleDelete(product._id)}
+                        className="cursor-pointer text-red-600 focus:text-red-600"
+                      >
+                        <Trash className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
-                {/* Specifications */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium mb-3">Specifications</h4>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    {Object.entries(selectedProduct.specifications).map(([key, value]) => (
-                      value && (
-                        <div key={key}>
-                          <span className="text-muted-foreground capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}:
-                          </span>
-                          <p className="font-medium">{value}</p>
-                        </div>
-                      )
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Variants */}
-              <div className="space-y-4">
-                <h4 className="font-medium">Variants</h4>
-                <div className="grid gap-4">
-                  {selectedProduct.variants.map((variant, idx) => (
-                    <div key={idx} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="font-medium">{variant.colorName}</h5>
-                      </div>
-                      {/* Images */}
-                      <div className="grid grid-cols-4 gap-2 mb-4">
-                        {variant.images.map((image, imgIdx) => (
-                          <div key={imgIdx} className="relative aspect-square rounded-md overflow-hidden">
-                            <Image
-                              src={image}
-                              alt={`${selectedProduct.name} ${variant.colorName} ${imgIdx + 1}`}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      {/* Sizes */}
-                      <div className="flex flex-wrap gap-2">
-                        {variant.sizes.map((size, sizeIdx) => (
-                          <div
-                            key={sizeIdx}
-                            className="px-3 py-1 bg-white border rounded-full text-sm"
-                          >
-                            {size.size} - {size.stock} pcs
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+     
     </div>
   );
 } 
