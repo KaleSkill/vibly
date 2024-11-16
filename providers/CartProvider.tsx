@@ -24,6 +24,7 @@ interface CartContextType {
   addToCart: (productId: string, variantData: any, quantity: number) => Promise<void>;
   updateQuantity: (itemId: string, newQuantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
+  clearCart: () => Promise<void>;
   cartCount: number;
   isLoading: boolean;
 }
@@ -144,12 +145,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearCart = async () => {
+    try {
+      const response = await fetch('/api/cart/clear', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to clear cart');
+
+      setItems([]);
+      toast({
+        title: "Success",
+        description: "Cart cleared successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear cart",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <CartContext.Provider value={{
       items,
       addToCart,
       updateQuantity,
       removeFromCart,
+      clearCart,
       cartCount: items.reduce((total, item) => total + item.quantity, 0),
       isLoading,
     }}>

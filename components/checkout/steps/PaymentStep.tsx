@@ -1,54 +1,81 @@
 'use client';
 
+import { useState } from 'react';
 import { useCheckout } from '@/providers/CheckoutProvider';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { CreditCard, Wallet, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/providers/CartProvider';
+
+const paymentMethods = [
+  {
+    id: 'cod',
+    title: 'Cash on Delivery',
+    description: 'Pay when you receive your order',
+    icon: Wallet,
+  },
+  {
+    id: 'online',
+    title: 'Online Payment',
+    description: 'Pay securely with your credit/debit card',
+    icon: CreditCard,
+  },
+] as const;
+
+type PaymentMethod = typeof paymentMethods[number]['id'];
 
 export function PaymentStep() {
-  const { setStep, paymentMethod, setPaymentMethod } = useCheckout();
+  const router = useRouter();
+  const { items, clearCart } = useCart();
+  const { setStep, paymentMethod, setPaymentMethod, selectedAddress } = useCheckout();
   const { toast } = useToast();
-
-  const paymentMethods = [
-    {
-      id: 'online',
-      title: 'Online Payment',
-      description: 'Pay securely with your credit/debit card',
-      icon: CreditCard,
-    },
-    {
-      id: 'cod',
-      title: 'Cash on Delivery',
-      description: 'Pay when you receive your order',
-      icon: Wallet,
-    },
-  ];
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePlaceOrder = async () => {
-    if (!paymentMethod) {
+    if (!paymentMethod || !selectedAddress) {
       toast({
         title: "Error",
-        description: "Please select a payment method",
+        description: !paymentMethod 
+          ? "Please select a payment method" 
+          : "Please select a shipping address",
         variant: "destructive",
       });
       return;
     }
 
-    // Handle order placement
+    setIsProcessing(true);
+
     try {
-      // Add your order placement logic here
-      toast({
-        title: "Success",
-        description: "Order placed successfully",
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items,
+          shippingAddressId: selectedAddress,
+          paymentMethod,
+        }),
       });
-    } catch (error) {
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create order');
+      }
+
+      await clearCart();
+      router.push('/checkout/confirmation');
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to place order",
+        description: error.message || "Failed to place order",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -64,7 +91,7 @@ export function PaymentStep() {
               key={method.id}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
-              onClick={() => setPaymentMethod(method.id as 'cod' | 'online')}
+              onClick={() => setPaymentMethod(method.id)}
               className={cn(
                 "relative cursor-pointer rounded-xl border-2 p-6 transition-colors",
                 isSelected 
@@ -98,23 +125,6 @@ export function PaymentStep() {
                   )}
                 </div>
               </div>
-              {isSelected && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 rounded-lg bg-black/5 p-4"
-                >
-                  {method.id === 'online' ? (
-                    <p className="text-sm">
-                      You will be redirected to our secure payment gateway to complete your purchase.
-                    </p>
-                  ) : (
-                    <p className="text-sm">
-                      Pay with cash when your order is delivered to your doorstep.
-                    </p>
-                  )}
-                </motion.div>
-              )}
             </motion.div>
           );
         })}
@@ -124,16 +134,23 @@ export function PaymentStep() {
         <Button
           variant="outline"
           onClick={() => setStep('address')}
+          disabled={isProcessing}
         >
           Back
         </Button>
         <Button 
           className="flex-1 bg-black hover:bg-black/90 h-11"
           onClick={handlePlaceOrder}
-          disabled={!paymentMethod}
+          disabled={!paymentMethod || isProcessing}
         >
-          {paymentMethod === 'online' ? 'Proceed to Payment' : 'Place Order'}
-          <Check className="ml-2 h-4 w-4" />
+          {isProcessing ? (
+            <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              {paymentMethod === 'online' ? 'Proceed to Payment' : 'Place Order'}
+              <Check className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </div>

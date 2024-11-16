@@ -4,17 +4,12 @@ export interface Product {
   price: number;
   discountedPrice: number;
   discountPercent: number;
-  description?: string;
-  specifications?: Record<string, string>;
-  status: 'active' | 'inactive';
-  createdAt: string;
   variants: Array<{
     color: {
       _id: string;
       name: string;
       value: string;
     };
-    colorName: string;
     sizes: Array<{
       size: string;
       stock: number;
