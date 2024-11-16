@@ -31,6 +31,7 @@ import { useSession } from 'next-auth/react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from '@/providers/CartProvider';
 import { Product } from '@/types';
+import { useRouter } from 'next/navigation';
 
 interface Review {
   _id: string;
@@ -68,6 +69,7 @@ export function ProductDetails({ productId }: { productId: string }) {
   const { data: session } = useSession();
   const { addToCart, items } = useCart();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const router = useRouter();
 
   // Check if product is in cart
   const isInCart = items.some(item => item.product._id === productId);
@@ -310,6 +312,34 @@ export function ProductDetails({ productId }: { productId: string }) {
       }, quantity);
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!selectedSize) {
+      toast({
+        title: "Error",
+        description: "Please select a size",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Add to cart first
+      await addToCart(productId, {
+        color: product?.variants[selectedVariant].color._id,
+        size: selectedSize
+      }, quantity);
+
+      // Navigate to checkout
+      router.push('/checkout');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to proceed to checkout",
+        variant: "destructive",
+      });
     }
   };
 
@@ -563,6 +593,8 @@ export function ProductDetails({ productId }: { productId: string }) {
                 <Button 
                   className="flex-1"
                   variant="outline"
+                  onClick={handleBuyNow}
+                  disabled={isAddingToCart || !selectedSize}
                 >
                   Buy Now
                 </Button>
@@ -570,6 +602,7 @@ export function ProductDetails({ productId }: { productId: string }) {
             ) : (
               <Button 
                 className="w-full bg-black hover:bg-black/90"
+                onClick={() => router.push('/checkout')}
               >
                 Buy Now
               </Button>
