@@ -661,7 +661,7 @@ export function ProductDetails({ productId }: { productId: string }) {
             </TabsContent>
             <TabsContent value="specifications" className="mt-4">
               <div className="grid grid-cols-2 gap-4">
-                {Object.entries(product.specifications).map(([key, value]) => (
+                {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
                   value && (
                     <div key={key} className="space-y-1">
                       <dt className="text-xs text-gray-500 capitalize">

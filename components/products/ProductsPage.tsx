@@ -100,7 +100,7 @@ export function ProductsPage() {
     if (selectedColors.length > 0) {
       result = result.filter(product =>
         product.variants.some(variant =>
-          selectedColors.includes(variant.color)
+          selectedColors.includes(variant.color._id)
         )
       );
     }

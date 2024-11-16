@@ -31,4 +31,15 @@ export interface CartItem {
     size: string;
   };
   quantity: number;
+}
+
+export interface Address {
+  _id: string;
+  fullName: string;
+  phoneNumber: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
 } 
