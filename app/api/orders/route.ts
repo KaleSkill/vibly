@@ -30,12 +30,15 @@ export async function POST(req: Request) {
       acc + (item.product.discountedPrice * item.quantity), 0
     );
 
+    // Set initial status based on payment method
+    const initialStatus = paymentMethod === 'cod' ? 'pending' : 'confirmed';
+
     const order = await Order.create({
       user: session.user.id,
       items,
       shippingAddress,
       paymentMethod,
-      status: 'pending',
+      status: initialStatus,
       total
     });
 
