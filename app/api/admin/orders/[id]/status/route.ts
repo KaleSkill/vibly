@@ -18,69 +18,49 @@ export async function PATCH(
     }
 
     const { status } = await req.json();
-
-    const validStatuses: OrderStatus[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
-    }
-
     await connectDB();
 
     const order = await Order.findById(params.id)
-      .populate('user', 'email name')
-      .populate('items.product', 'name price discountedPrice variants');
+      .populate('user', 'name email')
+      .populate({
+        path: 'items.product',
+        select: 'name price discountedPrice variants'
+      });
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const currentStatus = order.status;
-    const isValidTransition = (
-      (currentStatus === 'pending' && ['confirmed', 'cancelled'].includes(status)) ||
-      (currentStatus === 'confirmed' && ['shipped', 'cancelled'].includes(status)) ||
-      (currentStatus === 'shipped' && ['delivered', 'cancelled'].includes(status)) ||
-      (currentStatus === status)
-    );
-
-    if (!isValidTransition) {
-      return NextResponse.json(
-        { error: `Cannot change status from ${currentStatus} to ${status}` },
-        { status: 400 }
-      );
-    }
-
     order.status = status;
     await order.save();
 
-    if (order.user?.email) {
+    // Get variant details including images for each item
+    const orderItems = order.items.map((item: any) => {
+      const variant = item.product.variants.find(
+        (v: any) => v.color._id.toString() === item.variant.color
+      );
+      return {
+        name: item.product.name,
+        colorName: item.variant.colorName,
+        size: item.variant.size,
+        quantity: item.quantity,
+        price: item.product.discountedPrice,
+        image: variant?.images[0] || item.product.variants[0].images[0]
+      };
+    });
+
+    // Send email notification with complete details
+    if (order.user.email) {
       await sendOrderStatusEmail(order.user.email, {
         orderId: order._id.toString(),
         status,
-        items: order.items,
+        items: orderItems,
         total: order.total,
         shippingAddress: order.shippingAddress
       });
     }
 
-    const transformedOrder = {
-      ...order.toObject(),
-      _id: order._id.toString(),
-      user: {
-        _id: order.user._id.toString(),
-        name: order.user.name,
-        email: order.user.email
-      },
-      items: order.items.map(item => ({
-        ...item,
-        product: {
-          ...item.product,
-        
-          _id: item.product._id.toString()
-        }
-      }))
-    };
-
-    return NextResponse.json(transformedOrder);
+    return NextResponse.json(order);
   } catch (error) {
     console.error('Error updating order status:', error);
     return NextResponse.json(

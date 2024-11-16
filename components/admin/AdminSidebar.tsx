@@ -13,6 +13,7 @@ import {
   Users,
   ShoppingBag,
   ImageIcon,
+  TrendingUp,
 } from 'lucide-react';
 
 const menuItems = [
@@ -50,6 +51,11 @@ const menuItems = [
     title: 'Customers',
     href: '/admin/customers',
     icon: Users,
+  },
+  {
+    title: 'Sales',
+    href: '/admin/sales',
+    icon: TrendingUp,
   },
 ];
 
