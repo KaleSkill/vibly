@@ -13,23 +13,43 @@ const orderSchema = new mongoose.Schema({
       required: true
     },
     variant: {
-      size: String,
-      color: String
+      color: String,
+      size: String
     },
-    quantity: Number,
-    price: Number
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1
+    }
   }],
   shippingAddress: {
-    fullName: String,
-    phoneNumber: String,
-    streetAddress: String,
-    city: String,
-    state: String,
-    pincode: String
+    fullName: {
+      type: String,
+      required: true
+    },
+    streetAddress: {
+      type: String,
+      required: true
+    },
+    city: {
+      type: String,
+      required: true
+    },
+    state: {
+      type: String,
+      required: true
+    },
+    pincode: {
+      type: String,
+      required: true
+    },
+    phoneNumber: {
+      type: String,
+      required: true
+    }
   },
-  paymentMethod: {
-    type: String,
-    enum: ['cod', 'online'],
+  total: {
+    type: Number,
     required: true
   },
   status: {
@@ -37,14 +57,13 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
-  total: {
-    type: Number,
+  paymentMethod: {
+    type: String,
+    enum: ['cod', 'online'],
     required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
