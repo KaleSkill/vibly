@@ -12,8 +12,14 @@ export async function GET() {
     }
 
     await connectDB();
+    
+    // Populate product details when fetching cart
     const cart = await Cart.findOne({ user: session.user.id })
-      .populate('items.product', 'name price discountedPrice variants');
+      .populate({
+        path: 'product',
+        select: 'name price discountedPrice discountPercent variants',
+        model: 'Product'
+      });
 
     return NextResponse.json(cart || { items: [] });
   } catch (error) {
@@ -31,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { productId, variantData, quantity } = await req.json();
+    const { productId, variant, quantity } = await req.json();
 
     await connectDB();
     let cart = await Cart.findOne({ user: session.user.id });
@@ -46,8 +52,8 @@ export async function POST(req: Request) {
     // Check if item already exists
     const existingItemIndex = cart.items.findIndex(item => 
       item.product.toString() === productId &&
-      item.variant.color === variantData.color &&
-      item.variant.size === variantData.size
+      item.variant.color === variant.color &&
+      item.variant.size === variant.size
     );
 
     if (existingItemIndex > -1) {
@@ -55,7 +61,11 @@ export async function POST(req: Request) {
     } else {
       cart.items.push({
         product: productId,
-        variant: variantData,
+        variant: {
+          color: variant.color,
+          colorName: variant.colorName,
+          size: variant.size
+        },
         quantity
       });
     }
@@ -63,11 +73,17 @@ export async function POST(req: Request) {
     cart.updatedAt = new Date();
     await cart.save();
 
-    const populatedCart = await Cart.findById(cart._id)
-      .populate('items.product', 'name price discountedPrice variants');
+    // Fetch the updated cart with populated product details
+    const updatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: 'items.product',
+        select: 'name price discountedPrice discountPercent variants',
+        model: 'Product'
+      });
 
-    return NextResponse.json(populatedCart);
+    return NextResponse.json(updatedCart);
   } catch (error) {
+    console.error('Error:', error);
     return NextResponse.json(
       { error: 'Failed to update cart' },
       { status: 500 }

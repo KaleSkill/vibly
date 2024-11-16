@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Banner {
   _id: string;
@@ -127,8 +128,35 @@ export function BannerList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <Skeleton className="h-10 w-[120px]" />
+        </div>
+
+        <div className="grid gap-6">
+          {[...Array(3)].map((_, index) => (
+            <Card key={index} className="p-4">
+              <div className="flex gap-6">
+                <Skeleton className="w-[300px] h-[100px] rounded-lg" />
+
+                <div className="flex-1 flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-20" />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-6 w-10 rounded-full" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+
+                  <Skeleton className="h-9 w-9 rounded-md ml-auto" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

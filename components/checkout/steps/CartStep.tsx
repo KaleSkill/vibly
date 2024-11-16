@@ -30,7 +30,11 @@ interface CartItem {
       images: string[];
     }>;
   };
-  
+  variant: {
+    color: string;
+    colorName: string;
+    size: string;
+  };
   quantity: number;
 }
 
@@ -46,9 +50,14 @@ export function CartStep() {
     acc + ((item.product.price - item.product.discountedPrice) * item.quantity), 0
   );
 
-  // Helper function to find variant by color ID
-  const findVariantByColorId = (product: CartItem['product'], colorId: string) => {
-    return product.variants.find(v => v.color._id === colorId);
+  // Helper function to get variant details
+  const getVariantDetails = (product: CartItem['product'], colorId: string) => {
+    const variant = product.variants.find(v => v.color._id === colorId);
+    return {
+      name: variant?.color.name || 'Color',
+      value: variant?.color.value || '#000',
+      images: variant?.images || product.variants[0].images
+    };
   };
 
   return (
@@ -71,18 +80,18 @@ export function CartStep() {
               <span>{items.length} {items.length === 1 ? 'item' : 'items'} in your cart</span>
             </div>
             {items.map((item) => {
-              const selectedVariant = findVariantByColorId(item.product, item.variant.color);
+              const variantDetails = getVariantDetails(item.product, item.variant.color);
               
               return (
                 <motion.div
-                  key={`${item.product._id}-${item.variant.color}-${item.variant.size}`}
+                  key={item._id}
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   className="flex gap-6 p-4 border rounded-xl bg-white shadow-sm"
                 >
                   <div className="relative aspect-square h-32 w-32 rounded-lg overflow-hidden bg-gray-100">
                     <Image
-                      src={selectedVariant?.images[0] || item.product.variants[0].images[0]}
+                      src={variantDetails.images[0]}
                       alt={item.product.name}
                       fill
                       className="object-cover"
@@ -91,16 +100,16 @@ export function CartStep() {
                   <div className="flex-1 space-y-4">
                     <div>
                       <h3 className="font-medium line-clamp-2">{item.product.name}</h3>
-                      <div className="mt-2 space-y-1">
-                        <div className="flex flex-wrap gap-2">
-                         
-                          <Badge variant="secondary" className="text-xs">
-                            Size: {item.variant.size}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            Qty: {item.quantity}
-                          </Badge>
-                        </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          Color: {item.variant.colorName}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Size: {item.variant.size}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Qty: {item.quantity}
+                        </Badge>
                       </div>
                     </div>
                     <div className="space-y-1">

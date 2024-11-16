@@ -1,19 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, X, ShoppingCartIcon, ShoppingCart,  } from "lucide-react";
+import { ShoppingBag, Plus, Minus, X } from "lucide-react";
 import { useCart } from "@/providers/CartProvider";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-
 
 interface CartItem {
+  _id: string;
   product: {
     _id: string;
     name: string;
@@ -21,11 +20,22 @@ interface CartItem {
     discountedPrice: number;
     discountPercent: number;
     variants: Array<{
+      color: {
+        _id: string;
+        name: string;
+        value: string;
+      };
+      sizes: Array<{
+        size: string;
+        stock: number;
+      }>;
       images: string[];
     }>;
   };
   variant: {
+    color: string;
     size: string;
+    colorName: string;
   };
   quantity: number;
 }
@@ -34,24 +44,30 @@ export function CartSheet() {
   const { items, cartCount, isLoading, updateQuantity, removeFromCart } = useCart();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const total = items.reduce((acc, item) => 
     acc + (item.product.discountedPrice * item.quantity), 0
   );
 
+  // Helper function to get variant details
+  const getVariantDetails = (product: CartItem['product'], colorId: string) => {
+    const variant = product.variants.find(v => v.color._id === colorId);
+    if (!variant) return {
+      name: 'Color',
+      value: '#000',
+      images: product.variants[0]?.images || []
+    };
+    return {
+      name: variant.color.name,
+      value: variant.color.value,
+      images: variant.images
+    };
+  };
+
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    
     try {
       setIsUpdating(itemId);
       await updateQuantity(itemId, newQuantity);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update quantity",
-        variant: "destructive",
-      });
     } finally {
       setIsUpdating(null);
     }
@@ -61,16 +77,6 @@ export function CartSheet() {
     try {
       setIsRemoving(itemId);
       await removeFromCart(itemId);
-      toast({
-        title: "Success",
-        description: "Item removed from cart",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove item",
-        variant: "destructive",
-      });
     } finally {
       setIsRemoving(null);
     }
@@ -80,7 +86,7 @@ export function CartSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <ShoppingCartIcon className="h-6 w-6" />
+          <ShoppingBag className="h-6 w-6" />
           <AnimatePresence>
             {!isLoading && cartCount > 0 && (
               <motion.div
@@ -107,11 +113,8 @@ export function CartSheet() {
 
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 py-12">
-            <ShoppingCartIcon className="h-12 w-12 text-muted-foreground mb-4" />
+            <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Your cart is empty</p>
-            <p className="text-muted-foreground text-center mb-4">
-              Add items to your cart to proceed with your purchase
-            </p>
             <Button asChild variant="outline">
               <Link href="/products">Continue Shopping</Link>
             </Button>
@@ -120,11 +123,16 @@ export function CartSheet() {
           <>
             <div className="flex-1 overflow-y-auto py-6">
               <div className="space-y-6">
-                {items.map((item) => (
-                  <div key={item._id} className="flex gap-4">
+                {items.map((item) => {
+                  if (!item.product || !item.variant) return null;
+                  
+                  const variantDetails = getVariantDetails(item.product, item.variant.color);
+                  
+                  return (
+                    <div key={item._id} className="flex gap-4">
                       <div className="relative aspect-square h-24 w-24 rounded-lg overflow-hidden bg-gray-100">
                         <Image
-                        src={item.product.variants[0].images[0]}
+                          src={variantDetails.images[0]}
                           alt={item.product.name}
                           fill
                           className="object-cover"
@@ -134,14 +142,20 @@ export function CartSheet() {
                         <div className="flex justify-between">
                           <div>
                             <h4 className="font-medium line-clamp-2">{item.product.name}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Size: {item.variant.size}
-                          </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {/* <div 
+                                className="h-3 w-3 rounded-full border"
+                                style={{ backgroundColor: variantDetails.value }}
+                              /> */}
+                              <span className="text-sm text-muted-foreground">
+                                {item.variant.colorName} / {item.variant.size}
+                              </span>
+                            </div>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            className="h-8 w-8"
                             onClick={() => handleRemoveItem(item._id)}
                             disabled={isRemoving === item._id}
                           >
@@ -188,11 +202,12 @@ export function CartSheet() {
                         </div>
                       </div>
                     </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div className="border-t pt-6 space-y-4">
+            <div className="border-t pt-4 space-y-4">
               <div className="flex items-center justify-between text-base font-medium">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>

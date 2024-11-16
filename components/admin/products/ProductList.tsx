@@ -38,6 +38,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Product {
   _id: string;
@@ -233,8 +234,60 @@ export function ProductList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="rounded-md border">
+        {/* Filters Skeleton */}
+        <div className="p-4 space-y-4 border-b">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-[300px]" /> {/* Search */}
+            <Skeleton className="h-10 w-[180px]" /> {/* Category Filter */}
+            <Skeleton className="h-10 w-[180px]" /> {/* Sort */}
+            <Skeleton className="h-10 w-[180px]" /> {/* Status Filter */}
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <Skeleton className="h-4 w-12" />
+              </TableHead>
+              <TableHead>
+                <Skeleton className="h-4 w-32" />
+              </TableHead>
+              <TableHead>
+                <Skeleton className="h-4 w-20" />
+              </TableHead>
+              <TableHead>
+                <Skeleton className="h-4 w-16" />
+              </TableHead>
+              <TableHead className="text-right">
+                <Skeleton className="h-4 w-16 ml-auto" />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[...Array(5)].map((_, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <Skeleton className="h-12 w-12 rounded-md" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-[250px]" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Skeleton className="h-8 w-8 rounded-md ml-auto" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }

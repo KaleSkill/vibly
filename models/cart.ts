@@ -8,7 +8,8 @@ const cartItemSchema = new mongoose.Schema({
   },
   variant: {
     color: String,
-    size: String,
+    colorName: String,
+    size: String
   },
   quantity: {
     type: Number,

@@ -57,17 +57,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addToCart = async (productId: string, variantData: any, quantity: number) => {
+  const addToCart = async (productId: string, variantData: {
+    color: string;
+    colorName: string;
+    size: string;
+  }, quantity: number) => {
     try {
-      if (!session?.user) {
-        toast({
-          title: "Error",
-          description: "Please sign in to add items to cart",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const response = await fetch('/api/cart', {
         method: 'POST',
         headers: {
@@ -75,7 +70,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           productId,
-          variantData,
+          variant: {
+            color: variantData.color,
+            colorName: variantData.colorName,
+            size: variantData.size
+          },
           quantity,
         }),
       });

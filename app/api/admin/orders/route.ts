@@ -24,6 +24,8 @@ export async function GET() {
       .lean();
 
     // Transform MongoDB documents to plain objects with proper type conversion
+   
+    
     const transformedOrders = orders.map(order => ({
       ...order,
       _id: order._id.toString(),
@@ -36,6 +38,7 @@ export async function GET() {
         ...item,
         product: {
           ...item.product,
+          color: item.variant.colorName,
           _id: item.product._id.toString()
         }
       })),

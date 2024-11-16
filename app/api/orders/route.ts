@@ -32,6 +32,7 @@ export async function POST(req: Request) {
 
     // Set initial status based on payment method
     const initialStatus = paymentMethod === 'cod' ? 'pending' : 'confirmed';
+  
 
     const order = await Order.create({
       user: session.user.id,

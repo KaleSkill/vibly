@@ -23,6 +23,8 @@ import { useRouter } from 'next/navigation';
 import { EditCategoryForm } from './EditCategoryForm';
 import { CategoryForm } from './CategoryForm';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from '@/lib/utils';
 
 
 interface Category {
@@ -88,7 +90,61 @@ export function CategoryList() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="space-y-4">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-[200px]" />
+          <Skeleton className="h-10 w-[150px]" />
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <Skeleton className="h-4 w-24" />
+                </TableHead>
+                <TableHead>
+                  <Skeleton className="h-4 w-24" />
+                </TableHead>
+                <TableHead>
+                  <Skeleton className="h-4 w-20" />
+                </TableHead>
+                <TableHead>
+                  <Skeleton className="h-4 w-28" />
+                </TableHead>
+                <TableHead className="text-right">
+                  <Skeleton className="h-4 w-16 ml-auto" />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...Array(5)].map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-[200px]" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-[150px]" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-8 w-8 rounded-md ml-auto" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -122,6 +178,11 @@ export function CategoryList() {
                 <TableCell>
                   <Badge
                     variant={category.active ? "default" : "secondary"}
+                    className={cn(
+                      "px-2 py-1",
+                      category.active && "bg-green-100 text-green-800",
+                      !category.active && "bg-yellow-100 text-yellow-800"
+                    )}
                   >
                     {category.active ? 'Active' : 'Inactive'}
                   </Badge>

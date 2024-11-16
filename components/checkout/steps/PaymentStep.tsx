@@ -56,6 +56,7 @@ export function PaymentStep() {
         },
         body: JSON.stringify({
           items,
+          
           shippingAddressId: selectedAddress,
           paymentMethod,
         }),

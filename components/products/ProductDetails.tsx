@@ -302,13 +302,15 @@ export function ProductDetails({ productId }: { productId: string }) {
   );
 
   const handleAddToCart = async () => {
-    if (!selectedSize) return;
+    if (!selectedSize || !product) return;
 
     setIsAddingToCart(true);
     try {
+      const currentVariant = product.variants[selectedVariant];
       await addToCart(productId, {
-        color: product?.variants[selectedVariant].color._id,
-        size: selectedSize
+        color: currentVariant.color._id,
+        colorName: currentVariant.color.name,
+        size: selectedSize,
       }, quantity);
     } finally {
       setIsAddingToCart(false);
@@ -316,7 +318,7 @@ export function ProductDetails({ productId }: { productId: string }) {
   };
 
   const handleBuyNow = async () => {
-    if (!selectedSize) {
+    if (!selectedSize || !product) {
       toast({
         title: "Error",
         description: "Please select a size",
@@ -326,13 +328,13 @@ export function ProductDetails({ productId }: { productId: string }) {
     }
 
     try {
-      // Add to cart first
+      const currentVariant = product.variants[selectedVariant];
       await addToCart(productId, {
-        color: product?.variants[selectedVariant].color._id,
-        size: selectedSize
+        color: currentVariant.color._id,
+        colorName: currentVariant.color.name,
+        size: selectedSize,
       }, quantity);
 
-      // Navigate to checkout
       router.push('/checkout');
     } catch (error) {
       toast({
