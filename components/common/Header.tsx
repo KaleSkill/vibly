@@ -1,18 +1,14 @@
+'use client';
+
 import Link from "next/link";
 import { SignInButton } from "../auth/SignInButton";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { ShoppingCart, Search } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { CartSheet } from "../cart/CartSheet";
 
-export async function Header() {
-  let session;
-  try {
-    session = await getServerSession(authOptions);
-  } catch (error) {
-    console.error('Session error:', error);
-    session = null;
-  }
+export function Header() {
+  const { data: session } = useSession();
 
   return (
     <header className="border-b sticky top-0 bg-white/80 backdrop-blur-md z-50">
@@ -72,15 +68,7 @@ export async function Header() {
                 Admin Panel
               </Link>
             )}
-            <Link 
-              href="/cart" 
-              className="relative hover:text-primary transition-colors"
-            >
-              <ShoppingCart className="h-6 w-6" />
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
-              </span>
-            </Link>
+            <CartSheet />
             <SignInButton />
           </div>
         </div>

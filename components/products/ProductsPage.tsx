@@ -20,21 +20,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  discountedPrice: number;
-  discountPercent: number;
-  status: string;
-  createdAt: string;
-  variants: Array<{
-    color: string;
-    colorName: string;
-    images: string[];
-  }>;
-}
+import { Product } from '@/types';
 
 interface Color {
   _id: string;

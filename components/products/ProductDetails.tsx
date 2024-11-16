@@ -29,29 +29,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSession } from 'next-auth/react';
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  discountedPrice: number;
-  discountPercent: number;
-  specifications: Record<string, string>;
-  variants: Array<{
-    color: {
-      _id: string;
-      name: string;
-      value: string;
-    };
-    colorName: string;
-    images: string[];
-    sizes: Array<{
-      size: string;
-      stock: number;
-    }>;
-  }>;
-}
+import { useCart } from '@/providers/CartProvider';
+import { Product } from '@/types';
 
 interface Review {
   _id: string;
@@ -87,6 +66,11 @@ export function ProductDetails({ productId }: { productId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const { data: session } = useSession();
+  const { addToCart, items } = useCart();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  // Check if product is in cart
+  const isInCart = items.some(item => item.product._id === productId);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -315,6 +299,20 @@ export function ProductDetails({ productId }: { productId: string }) {
     </div>
   );
 
+  const handleAddToCart = async () => {
+    if (!selectedSize) return;
+
+    setIsAddingToCart(true);
+    try {
+      await addToCart(productId, {
+        color: product?.variants[selectedVariant].color._id,
+        size: selectedSize
+      }, quantity);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -409,13 +407,6 @@ export function ProductDetails({ productId }: { productId: string }) {
   }
 
   const currentVariant = product.variants[selectedVariant];
-
-  const handleAddToCart = () => {
-    toast({
-      title: "Added to Cart",
-      description: "Product has been added to your cart",
-    });
-  };
 
   // Calculate average rating
   const averageRating = reviews.length 
@@ -553,19 +544,36 @@ export function ProductDetails({ productId }: { productId: string }) {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button 
-              className="flex-1 bg-black hover:bg-black/90"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart
-            </Button>
-            <Button 
-              className="flex-1"
-              variant="outline"
-            >
-              Buy Now
-            </Button>
+            {!isInCart ? (
+              <>
+                <Button 
+                  className="flex-1 bg-black hover:bg-black/90"
+                  onClick={handleAddToCart}
+                  disabled={isAddingToCart || !selectedSize}
+                >
+                  {isAddingToCart ? (
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Add to Cart
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  className="flex-1"
+                  variant="outline"
+                >
+                  Buy Now
+                </Button>
+              </>
+            ) : (
+              <Button 
+                className="w-full bg-black hover:bg-black/90"
+              >
+                Buy Now
+              </Button>
+            )}
           </div>
 
           {/* Delivery Check - Updated Section */}

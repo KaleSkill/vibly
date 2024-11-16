@@ -9,22 +9,18 @@ import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  discountedPrice: number;
-  discountPercent: number;
-  variants: Array<{
-    images: string[];
-  }>;
-}
+import { useCart } from '@/providers/CartProvider';
+import { Product } from '@/types';
 
 export function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
+  const { addToCart, items } = useCart();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  // Check if product is in cart
+  const isInCart = items.some(item => item.product._id === product._id);
 
   // Image carousel effect on hover
   useEffect(() => {
@@ -43,12 +39,19 @@ export function ProductCard({ product }: { product: Product }) {
     return () => clearInterval(interval);
   }, [isHovered, product.variants]);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
-    toast({
-      title: "Added to Cart",
-      description: "Product has been added to your cart",
-    });
+    e.stopPropagation();
+    
+    setIsAddingToCart(true);
+    try {
+      await addToCart(product._id, {
+        color: product.variants[0].color._id,
+        size: product.variants[0].sizes[0].size
+      }, 1);
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   return (
@@ -84,7 +87,7 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
 
           <div className="p-4">
-            <h3 className="font-medium text-base line-clamp-1 mb-2">
+            <h3 className="font-medium text-base line-clamp-1 group-hover:text-primary transition-colors">
               {product.name}
             </h3>
 
@@ -99,13 +102,32 @@ export function ProductCard({ product }: { product: Product }) {
               )}
             </div>
 
-            <Button 
-              className="w-full bg-black hover:bg-black/90"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart
-            </Button>
+            {isInCart ? (
+              <Button 
+                variant="outline"
+                className="w-full border-primary text-primary hover:bg-primary hover:text-white"
+                asChild
+              >
+                <Link href={`/products/${product._id}`}>
+                  View Product
+                </Link>
+              </Button>
+            ) : (
+              <Button 
+                className="w-full bg-black hover:bg-black/90"
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
+              >
+                {isAddingToCart ? (
+                  <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Add to Cart
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </Link>
       </CardContent>

@@ -5,18 +5,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/products/ProductCard';
-
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  discountedPrice: number;
-  discountPercent: number;
-  status: 'active' | 'inactive';
-  variants: Array<{
-    images: string[];
-  }>;
-}
+import { Product } from '@/types';
 
 export function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
