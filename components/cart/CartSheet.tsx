@@ -10,6 +10,8 @@ import { formatPrice } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface CartItem {
   product: {
@@ -32,24 +34,43 @@ export function CartSheet() {
   const { items, cartCount, isLoading, updateQuantity, removeFromCart } = useCart();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const total = items.reduce((acc, item) => 
     acc + (item.product.discountedPrice * item.quantity), 0
   );
 
-  const handleUpdateQuantity = async (productId: string, newQuantity: number) => {
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    
     try {
-      setIsUpdating(productId);
-      await updateQuantity(productId, newQuantity);
+      setIsUpdating(itemId);
+      await updateQuantity(itemId, newQuantity);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update quantity",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(null);
     }
   };
 
-  const handleRemoveItem = async (productId: string) => {
+  const handleRemoveItem = async (itemId: string) => {
     try {
-      setIsRemoving(productId);
-      await removeFromCart(productId);
+      setIsRemoving(itemId);
+      await removeFromCart(itemId);
+      toast({
+        title: "Success",
+        description: "Item removed from cart",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove item",
+        variant: "destructive",
+      });
     } finally {
       setIsRemoving(null);
     }
@@ -59,7 +80,7 @@ export function CartSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <ShoppingBag className="h-6 w-6" />
+          <ShoppingCartIcon className="h-6 w-6" />
           <AnimatePresence>
             {!isLoading && cartCount > 0 && (
               <motion.div
@@ -86,7 +107,7 @@ export function CartSheet() {
 
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 py-12">
-            <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
+            <ShoppingCartIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Your cart is empty</p>
             <p className="text-muted-foreground text-center mb-4">
               Add items to your cart to proceed with your purchase
@@ -100,7 +121,7 @@ export function CartSheet() {
             <div className="flex-1 overflow-y-auto py-6">
               <div className="space-y-6">
                 {items.map((item) => (
-                  <div key={item.product._id} className="flex gap-4">
+                  <div key={item._id} className="flex gap-4">
                       <div className="relative aspect-square h-24 w-24 rounded-lg overflow-hidden bg-gray-100">
                         <Image
                         src={item.product.variants[0].images[0]}
@@ -121,10 +142,10 @@ export function CartSheet() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleRemoveItem(item.product._id)}
-                          disabled={isRemoving === item.product._id}
+                            onClick={() => handleRemoveItem(item._id)}
+                            disabled={isRemoving === item._id}
                           >
-                          {isRemoving === item.product._id ? (
+                            {isRemoving === item._id ? (
                               <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <X className="h-4 w-4" />
@@ -137,12 +158,12 @@ export function CartSheet() {
                               variant="outline" 
                               size="icon" 
                               className="h-8 w-8"
-                            onClick={() => handleUpdateQuantity(item.product._id, item.quantity - 1)}
-                            disabled={item.quantity <= 1 || isUpdating === item.product._id}
+                              onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
+                              disabled={item.quantity <= 1 || isUpdating === item._id}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                          {isUpdating === item.product._id ? (
+                            {isUpdating === item._id ? (
                               <div className="w-8 h-8 flex items-center justify-center">
                                 <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                               </div>
@@ -155,8 +176,8 @@ export function CartSheet() {
                               variant="outline" 
                               size="icon" 
                               className="h-8 w-8"
-                            onClick={() => handleUpdateQuantity(item.product._id, item.quantity + 1)}
-                            disabled={isUpdating === item.product._id}
+                              onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
+                              disabled={isUpdating === item._id}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
