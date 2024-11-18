@@ -45,6 +45,44 @@ interface Review {
   createdAt: string;
 }
 
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discountPercent: number;
+  discountedPrice: number;
+  saleType: boolean;
+  salePrice: number;
+  salePriceDiscount: number;
+  discountedSalePrice: number;
+  description: string;
+  specifications: {
+    [key: string]: string;
+  };
+  variants: Array<{
+    color: {
+      _id: string;
+      name: string;
+      value: string;
+    };
+    sizes: Array<{
+      size: string;
+      stock: number;
+    }>;
+    images: string[];
+  }>;
+}
+
+// Add this size order mapping
+const sizeOrder = {
+  'S': 1,
+  'M': 2,
+  'L': 3,
+  'XL': 4,
+  'XXL': 5,
+  'XXXL': 6
+};
+
 export function ProductDetails({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState(0);
@@ -345,6 +383,30 @@ export function ProductDetails({ productId }: { productId: string }) {
     }
   };
 
+  useEffect(() => {
+    // Only run if product exists
+    if (product && product.variants) {
+      // Reset size selection when color variant changes
+      const availableSizes = product.variants[selectedVariant].sizes;
+      if (availableSizes.length > 0) {
+        // Select first available size with stock
+        const firstAvailableSize = availableSizes.find(size => size.stock > 0);
+        setSelectedSize(firstAvailableSize ? firstAvailableSize.size : '');
+      } else {
+        setSelectedSize('');
+      }
+    }
+  }, [selectedVariant, product]);
+
+  // Helper function to sort sizes
+  const sortSizes = (sizes: Array<{ size: string; stock: number }>) => {
+    return [...sizes].sort((a, b) => {
+      const orderA = sizeOrder[a.size as keyof typeof sizeOrder] || 999;
+      const orderB = sizeOrder[b.size as keyof typeof sizeOrder] || 999;
+      return orderA - orderB;
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -446,8 +508,8 @@ export function ProductDetails({ productId }: { productId: string }) {
     : '0.0';
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+    <div className="container max-w-7xl mx-auto px-4 py-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Images */}
         <div className="space-y-4">
           <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-50">
@@ -458,11 +520,7 @@ export function ProductDetails({ productId }: { productId: string }) {
               className="object-cover"
               priority
             />
-            {product.discountPercent > 0 && (
-              <Badge className="absolute top-3 right-3 bg-black text-white px-2 py-1">
-                {product.discountPercent}% OFF
-              </Badge>
-            )}
+           
           </div>
 
           {/* Thumbnail Images */}
@@ -488,19 +546,55 @@ export function ProductDetails({ productId }: { productId: string }) {
         </div>
 
         {/* Right Column - Details */}
-        <div className="flex flex-col space-y-6">
+        <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-medium">{product.name}</h1>
-            <div className="mt-3 flex items-baseline gap-3">
-              <span className="text-2xl font-medium">
-                {formatPrice(product.discountedPrice)}
-              </span>
-              {product.discountPercent > 0 && (
-                <span className="text-base text-gray-500 line-through">
-                  {formatPrice(product.price)}
-                </span>
+            <h1 className="text-3xl font-bold">{product.name}</h1>
+            
+            {/* Price Display */}
+            <div className="mt-4 flex items-baseline gap-4">
+              {product.saleType ? (
+                // Sale Price Display
+                <>
+                  <span className="text-3xl font-bold text-red-600">
+                    {formatPrice(product.discountedSalePrice)}
+                  </span>
+                  <span className="text-xl text-muted-foreground line-through">
+                    {formatPrice(product.salePrice)}
+                  </span>
+                  <Badge className="bg-red-500">
+                    SALE {product.salePriceDiscount}% OFF
+                  </Badge>
+                </>
+              ) : (
+                // Regular Price Display
+                <>
+                  <span className="text-3xl font-bold">
+                    {formatPrice(product.discountedPrice)}
+                  </span>
+                  {product.discountPercent > 0 && (
+                    <>
+                      <span className="text-xl text-muted-foreground line-through">
+                        {formatPrice(product.price)}
+                      </span>
+                      <Badge>
+                        {product.discountPercent}% OFF
+                      </Badge>
+                    </>
+                  )}
+                </>
               )}
             </div>
+
+            {/* Savings Display */}
+            {product.saleType ? (
+              <p className="mt-2 text-sm text-red-600">
+                You save {formatPrice(product.salePrice - product.discountedSalePrice)}
+              </p>
+            ) : product.discountPercent > 0 && (
+              <p className="mt-2 text-sm text-green-600">
+                You save {formatPrice(product.price - product.discountedPrice)}
+              </p>
+            )}
           </div>
 
           {/* Color Selection */}
@@ -532,7 +626,7 @@ export function ProductDetails({ productId }: { productId: string }) {
           <div className="space-y-3">
             <span className="text-sm font-medium">Size</span>
             <div className="grid grid-cols-6 gap-2">
-              {currentVariant.sizes.map((size) => (
+              {sortSizes(product.variants[selectedVariant].sizes).map((size) => (
                 <button
                   key={size.size}
                   onClick={() => setSelectedSize(size.size)}

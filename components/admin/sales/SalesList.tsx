@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -9,158 +9,222 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { format } from 'date-fns';
-import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Edit, Trash, Power, PowerOff } from "lucide-react";
+import { CreateSaleDialog } from './CreateSaleDialog';
+import { EditSaleDialog } from './EditSaleDialog';
 
 interface Sale {
   _id: string;
-  orderId: string;
-  customer: {
-    name: string;
-    email: string;
-  };
-  amount: number;
-  paymentMethod: 'cod' | 'online';
-  status: 'completed' | 'pending' | 'failed';
-  createdAt: string;
+  name: string;
+  description: string;
+  products: Array<{
+    product: {
+      _id: string;
+      name: string;
+      price: number;
+    };
+    salePrice: number;
+    discountPercent: number;
+    discountedPrice: number;
+  }>;
+  status: 'active' | 'inactive';
 }
 
 export function SalesList() {
+  const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [paymentFilter, setPaymentFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const { toast } = useToast();
+
+  const fetchSales = async () => {
+    try {
+      const response = await fetch('/api/admin/sales');
+      const data = await response.json();
+      setSales(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch sales",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSales();
+  }, []);
+
+  const handleStatusChange = async (saleId: string, newStatus: 'active' | 'inactive') => {
+    try {
+      const response = await fetch(`/api/admin/sales/${saleId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update sale status');
+
+      toast({
+        title: "Success",
+        description: `Sale ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+      });
+
+      fetchSales();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update sale status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (saleId: string) => {
+    if (!confirm('Are you sure you want to delete this sale?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/sales/${saleId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete sale');
+
+      toast({
+        title: "Success",
+        description: "Sale deleted successfully",
+      });
+
+      fetchSales();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete sale",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {/* Filters Skeleton */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <Skeleton className="h-10 w-[300px]" />
-          </div>
-          <Skeleton className="h-10 w-[180px]" />
-          <Skeleton className="h-10 w-[180px]" />
-        </div>
-
-        {/* Table Skeleton */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <Skeleton className="h-4 w-24" />
-                </TableHead>
-                <TableHead>
-                  <Skeleton className="h-4 w-32" />
-                </TableHead>
-                <TableHead>
-                  <Skeleton className="h-4 w-24" />
-                </TableHead>
-                <TableHead>
-                  <Skeleton className="h-4 w-24" />
-                </TableHead>
-                <TableHead>
-                  <Skeleton className="h-4 w-24" />
-                </TableHead>
-                <TableHead>
-                  <Skeleton className="h-4 w-28" />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[...Array(5)].map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-40" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <Input
-            placeholder="Search by order ID or customer..."
-            className="max-w-sm"
-          />
-        </div>
-        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Payment Method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Methods</SelectItem>
-            <SelectItem value="online">Online</SelectItem>
-            <SelectItem value="cod">Cash on Delivery</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold tracking-tight">Sales</h2>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Sale
+        </Button>
       </div>
 
-      {/* Sales Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order ID</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Payment</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Products</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {/* Add your sales data mapping here */}
+            {sales.map((sale) => (
+              <TableRow key={sale._id}>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">{sale.name}</div>
+                    {sale.description && (
+                      <div className="text-sm text-muted-foreground">
+                        {sale.description}
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    {sale.products.map((item) => (
+                      <div key={item.product._id} className="text-sm">
+                        {item.product.name} - {formatPrice(item.salePrice)} 
+                        ({item.discountPercent}% off)
+                      </div>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={sale.status === 'active' ? "success" : "secondary"}
+                  >
+                    {sale.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedSale(sale)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleStatusChange(
+                        sale._id, 
+                        sale.status === 'active' ? 'inactive' : 'active'
+                      )}
+                    >
+                      {sale.status === 'active' ? (
+                        <PowerOff className="h-4 w-4" />
+                      ) : (
+                        <Power className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(sale._id)}
+                      className="text-red-600"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
+
+      <CreateSaleDialog 
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={fetchSales}
+      />
+
+      {selectedSale && (
+        <EditSaleDialog
+          sale={selectedSale}
+          open={!!selectedSale}
+          onOpenChange={(open) => !open && setSelectedSale(null)}
+          onSuccess={() => {
+            setSelectedSale(null);
+            fetchSales();
+          }}
+        />
+      )}
     </div>
   );
 } 

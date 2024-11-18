@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductCard } from './ProductCard';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,15 @@ interface SortOption {
   label: string;
 }
 
+interface Sale {
+  _id: string;
+  product: string; // product ID
+  price: number;
+  discountPercent: number;
+  discountedPrice: number;
+  status: 'active';
+}
+
 const sortOptions: SortOption[] = [
   { value: 'recommended', label: 'Recommended' },
   { value: 'price-low-high', label: 'Price: Low to High' },
@@ -56,22 +66,32 @@ const priceRanges: PriceRange[] = [
 ];
 
 export function ProductsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [selectedPriceRange, setSelectedPriceRange] = useState<number[]>([0, 10000]);
-  const [sortBy, setSortBy] = useState('recommended');
+  const [selectedPriceRange, setSelectedPriceRange] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
+  // Get filters from URL params only if they exist
+  const colorParam = searchParams.get('color');
+  const priceParam = searchParams.get('price');
+  const sortParam = searchParams.get('sort');
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsRes, colorsRes] = await Promise.all([
+        const [productsRes, colorsRes, salesRes] = await Promise.all([
           fetch('/api/admin/products'),
-          fetch('/api/admin/colors')
+          fetch('/api/admin/colors'),
+          fetch('/api/sales')
         ]);
 
         const [productsData, colorsData] = await Promise.all([
@@ -83,6 +103,7 @@ export function ProductsPage() {
         setProducts(activeProducts);
         setFilteredProducts(activeProducts);
         setColors(colorsData);
+        setSales(await salesRes.json());
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -93,10 +114,10 @@ export function ProductsPage() {
     fetchData();
   }, []);
 
+  // Only apply filters if they are actually set
   useEffect(() => {
     let result = [...products];
 
-    // Apply color filter
     if (selectedColors.length > 0) {
       result = result.filter(product =>
         product.variants.some(variant =>
@@ -105,43 +126,62 @@ export function ProductsPage() {
       );
     }
 
-    // Apply price range filter
-    result = result.filter(product =>
-      product.discountedPrice >= selectedPriceRange[0] &&
-      product.discountedPrice <= selectedPriceRange[1]
-    );
+    if (selectedPriceRange.length === 2) {
+      result = result.filter(product =>
+        product.discountedPrice >= selectedPriceRange[0] &&
+        product.discountedPrice <= selectedPriceRange[1]
+      );
+    }
 
-    // Apply sorting
-    switch (sortBy) {
-      case 'price-low-high':
-        result.sort((a, b) => a.discountedPrice - b.discountedPrice);
-        break;
-      case 'price-high-low':
-        result.sort((a, b) => b.discountedPrice - a.discountedPrice);
-        break;
-      case 'name-a-z':
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'name-z-a':
-        result.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case 'newest':
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case 'recommended':
-      default:
-        // Keep original order for recommended
-        break;
+    if (sortBy) {
+      switch (sortBy) {
+        case 'price-low-high':
+          result.sort((a, b) => a.discountedPrice - b.discountedPrice);
+          break;
+        case 'price-high-low':
+          result.sort((a, b) => b.discountedPrice - a.discountedPrice);
+          break;
+        case 'name-a-z':
+          result.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+        case 'name-z-a':
+          result.sort((a, b) => b.name.localeCompare(a.name));
+          break;
+        case 'newest':
+          result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          break;
+      }
     }
 
     setFilteredProducts(result);
   }, [products, selectedColors, selectedPriceRange, sortBy]);
+
+  const clearFilters = () => {
+    setSelectedColors([]);
+    setSelectedPriceRange([]);
+    setActiveFilters([]);
+    setIsOpen(false);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === '') {
+      params.delete('sort');
+    } else {
+      params.set('sort', value);
+    }
+    router.push(`/products?${params.toString()}`);
+  };
 
   const handlePriceRangeChange = (range: PriceRange) => {
     setSelectedPriceRange([range.min, range.max]);
     setActiveFilters(prev => 
       [...prev.filter(f => !f.startsWith('Price:')), `Price: ${range.label}`]
     );
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('price', `${range.min}-${range.max}`);
+    router.push(`/products?${params.toString()}`);
     setIsOpen(false);
   };
 
@@ -151,6 +191,14 @@ export function ProductsPage() {
       : [...selectedColors, color._id];
     setSelectedColors(newColors);
     
+    const params = new URLSearchParams(searchParams.toString());
+    if (newColors.length === 0) {
+      params.delete('color');
+    } else {
+      params.set('color', newColors.join(','));
+    }
+    router.push(`/products?${params.toString()}`);
+
     if (selectedColors.includes(color._id)) {
       setActiveFilters(prev => 
         prev.filter(f => f !== `Color: ${color.name}`)
@@ -158,13 +206,6 @@ export function ProductsPage() {
     } else {
       setActiveFilters(prev => [...prev, `Color: ${color.name}`]);
     }
-    setIsOpen(false);
-  };
-
-  const clearFilters = () => {
-    setSelectedColors([]);
-    setSelectedPriceRange([0, 10000]);
-    setActiveFilters([]);
     setIsOpen(false);
   };
 
@@ -317,7 +358,10 @@ export function ProductsPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Select value={sortBy} onValueChange={setSortBy}>
+          <Select 
+            value={sortBy} 
+            onValueChange={handleSortChange}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -363,7 +407,7 @@ export function ProductsPage() {
                 onClick={() => {
                   setActiveFilters(activeFilters.filter(f => f !== filter));
                   if (filter.startsWith('Price:')) {
-                    setSelectedPriceRange([0, 10000]);
+                    setSelectedPriceRange([]);
                   } else if (filter.startsWith('Color:')) {
                     const colorName = filter.split(': ')[1];
                     const color = colors.find(c => c.name === colorName);
@@ -429,9 +473,13 @@ export function ProductsPage() {
 
         {/* Products Grid */}
         <div className="flex-1">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product._id} product={product} />
+              <div className="h-full" key={product._id}>
+                <ProductCard 
+                  product={product}
+                />
+              </div>
             ))}
           </div>
 

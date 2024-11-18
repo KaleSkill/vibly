@@ -79,7 +79,11 @@ export function ProductCard({ product }: { product: Product }) {
               />
             ))}
             
-            {product.discountPercent > 0 && (
+            {product.saleType ? (
+              <Badge className="absolute top-2 right-2 bg-red-500 text-white">
+                SALE {product.salePriceDiscount}% OFF
+              </Badge>
+            ) : product.discountPercent > 0 && (
               <Badge className="absolute top-2 right-2 bg-green-500 text-white">
                 {product.discountPercent}% OFF
               </Badge>
@@ -92,13 +96,26 @@ export function ProductCard({ product }: { product: Product }) {
             </h3>
 
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg font-bold">
-                {formatPrice(product.discountedPrice)}
-              </span>
-              {product.discountPercent > 0 && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatPrice(product.price)}
-                </span>
+              {product.saleType ? (
+                <>
+                  <span className="text-lg font-bold text-red-600">
+                    {formatPrice(product.discountedSalePrice)}
+                  </span>
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatPrice(product.salePrice)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-lg font-bold">
+                    {formatPrice(product.discountedPrice)}
+                  </span>
+                  {product.discountPercent > 0 && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      {formatPrice(product.price)}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 

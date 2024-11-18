@@ -84,6 +84,7 @@ export function ProductList() {
               <ProductCard
                 key={product._id}
                 product={product}
+               
               />
             ))}
           </div>

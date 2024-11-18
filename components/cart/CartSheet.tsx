@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, X } from "lucide-react";
+import { ShoppingBag, Plus, Minus, X, ShoppingCartIcon } from "lucide-react";
 import { useCart } from "@/providers/CartProvider";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
@@ -86,7 +86,7 @@ export function CartSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <ShoppingBag className="h-6 w-6" />
+          <ShoppingCartIcon className="h-6 w-6" />
           <AnimatePresence>
             {!isLoading && cartCount > 0 && (
               <motion.div
@@ -113,7 +113,7 @@ export function CartSheet() {
 
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 py-12">
-            <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
+            <ShoppingCartIcon className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Your cart is empty</p>
             <Button asChild variant="outline">
               <Link href="/products">Continue Shopping</Link>

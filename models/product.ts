@@ -49,7 +49,7 @@ const productSchema = new mongoose.Schema({
   specifications: {
     type: specificationSchema,
     required: false,
-    default: () => ({})  // This makes it optional with empty defaults
+    default: () => ({})
   },
   price: { 
     type: Number, 
@@ -90,26 +90,62 @@ const productSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: [ 'active', 'inactive'],
+    enum: ['active', 'inactive'],
     default: 'active'
+  },
+  saleType: {
+    type: Boolean,
+    default: false
+  },
+  salePrice: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  salePriceDiscount: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  discountedSalePrice: {
+    type: Number,
+    min: 0,
+    default: 0
   }
 }, { 
   timestamps: true 
 });
 
-// Calculate discountedPrice before saving
+// Calculate both regular discounted price and sale discounted price
 productSchema.pre('save', function(next) {
+  // Calculate regular discounted price
   if (this.isModified('price') || this.isModified('discountPercent')) {
     this.discountedPrice = this.discountPercent > 0 
       ? Math.round(this.price - (this.price * (this.discountPercent / 100)))
       : this.price;
   }
+
+  // Calculate sale discounted price
+  if (this.isModified('salePrice') || this.isModified('salePriceDiscount')) {
+    this.discountedSalePrice = this.salePriceDiscount > 0 
+      ? Math.round(this.salePrice - (this.salePrice * (this.salePriceDiscount / 100)))
+      : this.salePrice;
+  }
+
+  // Reset sale fields if saleType is false
+  if (this.isModified('saleType') && !this.saleType) {
+    this.salePrice = 0;
+    this.salePriceDiscount = 0;
+    this.discountedSalePrice = 0;
+  }
+
   next();
 });
 
-// Add these indexes to your existing schema
-productSchema.index({ name: 'text' });  // For text search
-productSchema.index({ price: 1 });      // For price sorting
+// Add indexes
+productSchema.index({ name: 'text' });
+productSchema.index({ price: 1 });
 productSchema.index({ category: 1 });
 
 const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
