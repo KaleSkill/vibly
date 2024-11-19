@@ -618,7 +618,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       <FormItem>
                         <FormLabel>Price (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          <Input type="number" placeholder="0.00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -631,7 +631,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       <FormItem>
                         <FormLabel>Discount (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0" {...field} />
+                          <Input type="number" placeholder="0" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

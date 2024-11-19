@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Minus, Plus, MapPin, Truck, XCircle, Calendar, Star, StarHalf, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, MapPin, Truck, XCircle, Calendar, Star, StarHalf, MoreVertical, Pencil, Trash2, AlertCircle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from '@/providers/CartProvider';
 import { Product } from '@/types';
 import { useRouter } from 'next/navigation';
+import { Label } from "@/components/ui/label";
 
 interface Review {
   _id: string;
@@ -108,6 +109,7 @@ export function ProductDetails({ productId }: { productId: string }) {
   const { addToCart, items } = useCart();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const router = useRouter();
+  const [availableStock, setAvailableStock] = useState(0);
 
   // Check if product is in cart
   const isInCart = items.some(item => item.product._id === productId);
@@ -164,6 +166,19 @@ export function ProductDetails({ productId }: { productId: string }) {
 
     fetchReviews();
   }, [productId]);
+
+  useEffect(() => {
+    if (product && selectedSize) {
+      const currentVariant = product.variants[selectedVariant];
+      const sizeStock = currentVariant.sizes.find(s => s.size === selectedSize)?.stock || 0;
+      setAvailableStock(sizeStock);
+      
+      // Reset quantity if it exceeds available stock
+      if (quantity > sizeStock) {
+        setQuantity(sizeStock);
+      }
+    }
+  }, [product, selectedVariant, selectedSize]);
 
   const checkDelivery = async () => {
     if (!pincode || pincode.length !== 6) {
@@ -339,17 +354,62 @@ export function ProductDetails({ productId }: { productId: string }) {
     </div>
   );
 
+  const incrementQuantity = () => {
+    if (quantity < availableStock) {
+      setQuantity(prev => prev + 1);
+    }
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(prev => prev - 1);
+    }
+  };
+
+  const handleQuantityChange = (value: number) => {
+    if (value >= 1 && value <= availableStock) {
+      setQuantity(value);
+    }
+  };
+
   const handleAddToCart = async () => {
-    if (!selectedSize || !product) return;
+    if (!selectedSize) {
+      toast({
+        title: "Error",
+        description: "Please select a size",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quantity > availableStock) {
+      toast({
+        title: "Error",
+        description: "Selected quantity exceeds available stock",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsAddingToCart(true);
     try {
-      const currentVariant = product.variants[selectedVariant];
-      await addToCart(productId, {
-        color: currentVariant.color._id,
-        colorName: currentVariant.color.name,
-        size: selectedSize,
+      await addToCart(product._id, {
+        color: product.variants[selectedVariant].color._id,
+        colorName: product.variants[selectedVariant].color.name,
+        size: selectedSize
       }, quantity);
+
+      toast({
+        title: "Success",
+        description: "Added to cart",
+      });
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add to cart",
+        variant: "destructive",
+      });
     } finally {
       setIsAddingToCart(false);
     }
@@ -405,6 +465,23 @@ export function ProductDetails({ productId }: { productId: string }) {
       const orderB = sizeOrder[b.size as keyof typeof sizeOrder] || 999;
       return orderA - orderB;
     });
+  };
+
+  // Get stock warning message and color
+  const getStockWarning = (stock: number) => {
+    if (stock <= 3) {
+      return {
+        message: `Only ${stock} items left!`,
+        className: "text-red-600 font-medium"
+      };
+    }
+    if (stock < 10) {
+      return {
+        message: `Only ${stock} items left`,
+        className: "text-yellow-600"
+      };
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -644,27 +721,47 @@ export function ProductDetails({ productId }: { productId: string }) {
             </div>
           </div>
 
-          {/* Quantity */}
-          <div className="space-y-3">
-            <span className="text-sm font-medium">Quantity</span>
-            <div className="flex items-center gap-2 w-28">
+          {/* Quantity Selector */}
+          <div className="space-y-2">
+            <Label>Quantity</Label>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="h-8 w-8"
+                onClick={decrementQuantity}
+                disabled={quantity <= 1}
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-4 w-4" />
               </Button>
-              <span className="flex-1 text-center">{quantity}</span>
+              <Input
+                type="number"
+                min={1}
+                max={availableStock}
+                value={quantity}
+                onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                className="w-20 text-center"
+              />
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setQuantity(quantity + 1)}
-                className="h-8 w-8"
+                onClick={incrementQuantity}
+                disabled={quantity >= availableStock}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </Button>
+              
+              {/* Stock Warning */}
+              {availableStock > 0 && getStockWarning(availableStock) && (
+                <div className={cn(
+                  "flex items-center gap-1 ml-2",
+                  getStockWarning(availableStock)?.className
+                )}>
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">
+                    {getStockWarning(availableStock)?.message}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
