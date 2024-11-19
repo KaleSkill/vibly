@@ -21,7 +21,7 @@ export function SignInButton() {
   if (status === 'loading') {
     return <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
       <Avatar className="h-8 w-8">
-        <AvatarFallback>...</AvatarFallback>
+        <AvatarFallback></AvatarFallback>
       </Avatar>
     </Button>;
   }

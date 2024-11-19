@@ -24,9 +24,17 @@ import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
+// Add this CSS class near the top of the file after imports
+const noSpinnerClass = "appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
 // Add this helper function at the top of the file
 const formatIndianPrice = (price: number) => {
   return `₹${price.toLocaleString('en-IN')}`;
+};
+
+// Add this near the top of the file after the noSpinnerClass definition
+const preventWheelChange = (e: React.WheelEvent<HTMLInputElement>) => {
+  e.currentTarget.blur();
 };
 
 // Step 1: Basic Details
@@ -618,7 +626,13 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       <FormItem>
                         <FormLabel>Price (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          <Input 
+                            type="number" 
+                            placeholder="1200"
+                            className={cn(noSpinnerClass)}
+                            onWheel={preventWheelChange}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -631,7 +645,13 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       <FormItem>
                         <FormLabel>Discount (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0" {...field} />
+                          <Input 
+                            type="number" 
+                            placeholder="10" 
+                            className={cn(noSpinnerClass)}
+                            onWheel={preventWheelChange}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

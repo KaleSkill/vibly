@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { SignInButton } from "../auth/SignInButton";
@@ -22,26 +22,26 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="/products" 
+            <Link
+              href="/products"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               All Products
             </Link>
-            <Link 
-              href="/products?category=men" 
+            <Link
+              href="/products?category=men"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Men
             </Link>
-            <Link 
-              href="/products?category=women" 
+            <Link
+              href="/products?category=women"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Women
             </Link>
-            <Link 
-              href="/products?category=kids" 
+            <Link
+              href="/products?category=kids"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Kids
@@ -60,19 +60,19 @@ export function Header() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {session?.user?.role === 'admin' && (
-              <Link 
+            {session?.user?.role === "admin" && (
+              <Link
                 href="/admin/dashboard"
                 className="text-sm font-medium hover:text-primary transition-colors"
               >
                 Admin Panel
               </Link>
             )}
-            <CartSheet />
+            {session ? <CartSheet /> : <div className="w-10 h-10"></div>}
             <SignInButton />
           </div>
         </div>
       </div>
     </header>
   );
-} 
+}

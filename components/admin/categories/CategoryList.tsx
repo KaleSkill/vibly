@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Edit, MoreHorizontal, Trash, Plus } from "lucide-react";
-import { useRouter } from 'next/navigation';
 import { EditCategoryForm } from './EditCategoryForm';
 import { CategoryForm } from './CategoryForm';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +29,6 @@ import { cn } from '@/lib/utils';
 interface Category {
   _id: string;
   name: string;
-  slug: string;
   description?: string;
   active: boolean;
   createdAt: string;
@@ -39,7 +37,6 @@ interface Category {
 export function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
   const { toast } = useToast();
   
 
@@ -164,7 +161,6 @@ export function CategoryList() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -174,7 +170,6 @@ export function CategoryList() {
             {categories.map((category) => (
               <TableRow key={category._id}>
                 <TableCell className="font-medium">{category.name}</TableCell>
-                <TableCell>{category.slug}</TableCell>
                 <TableCell>
                   <Badge
                     variant={category.active ? "default" : "secondary"}
