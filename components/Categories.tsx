@@ -34,7 +34,7 @@ export function Categories() {
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold">Shop by Category</h2>
         <p className="text-muted-foreground mt-1">
-          Find what you're looking for
+          Find what you&apos;re looking for
         </p>
       </div>
 

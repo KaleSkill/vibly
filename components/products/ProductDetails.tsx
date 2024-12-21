@@ -12,10 +12,7 @@ import {
   Plus,
   MapPin,
   Truck,
-  XCircle,
-  Calendar,
   Star,
-  StarHalf,
   MoreVertical,
   Pencil,
   Trash2,
@@ -44,7 +41,6 @@ import {
 import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/providers/CartProvider";
-import { Product } from "@/types";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 
@@ -144,7 +140,6 @@ const RatingStars = memo(function RatingStars({ rating }: { rating: number }) {
 // Create a memoized variant button component
 const VariantButton = memo(function VariantButton({
   variant,
-  index,
   isSelected,
   onClick,
 }: {
@@ -572,7 +567,6 @@ export function ProductDetails({ productId }: { productId: string }) {
         product!._id,
         {
           color: currentVariant.color._id,
-          colorName: currentVariant.color.name,
           size: selectedSize,
         },
         quantity
@@ -807,7 +801,7 @@ export function ProductDetails({ productId }: { productId: string }) {
           {/* Color Selection */}
           <div className="space-y-3">
             <span className="text-sm font-medium">
-              Color: {currentVariant.colorName}
+              Color: {currentVariant.color.name}
             </span>
             <div className="flex gap-2">
               {product.variants.map((variant, index) => (

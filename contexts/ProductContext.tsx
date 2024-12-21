@@ -41,8 +41,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         const [productsRes, colorsRes] = await Promise.all([
-          fetch(`/api/admin/products?${searchParams.toString()}`),
-          fetch('/api/admin/colors')
+          fetch(`/api/products?${searchParams.toString()}`),
+          fetch('/api/colors')
         ]);
 
         const [productsData, colorsData] = await Promise.all([

@@ -15,30 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import Link from "next/link";
+import { Product } from "@/types";
 
-interface ProductVariant {
-  _id: string;
-  color: {
-    _id: string;
-    name: string;
-    value: string;
-  };
-  colorName: string;
-  images: string[];
-  sizes: Array<{
-    size: string;
-    stock: number;
-  }>;
-}
 
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  discountedPrice: number;
-  discountPercent: number;
-  variants: ProductVariant[];
-}
 
 export function CartSheet() {
   const { items, cartCount, updateQuantity, removeFromCart } = useCart();
@@ -46,7 +25,11 @@ export function CartSheet() {
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
 
   const total = items.reduce(
-    (acc, item) => acc + item.product.discountedPrice * item.quantity,
+    (acc, item) =>
+      acc +
+      (item.product.saleType
+        ? item.product.discountedSalePrice
+        : item.product.discountedPrice * item.quantity),
     0
   );
 
@@ -131,7 +114,7 @@ export function CartSheet() {
                                 }}
                               />
                               <span className="text-sm text-muted-foreground">
-                                {matchingVariant.colorName} /{" "}
+                                {matchingVariant.color.name} /{" "}
                                 {item.variant.size}
                               </span>
                             </div>
@@ -186,7 +169,9 @@ export function CartSheet() {
                           </div>
                           <p className="font-medium">
                             {formatPrice(
-                              item.product.discountedPrice * item.quantity
+                              item.product.saleType
+                                ? item.product.discountedSalePrice
+                                : item.product.discountedPrice * item.quantity
                             )}
                           </p>
                         </div>

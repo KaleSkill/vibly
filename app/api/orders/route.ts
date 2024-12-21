@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const total = populatedItems.reduce((acc: number, item: any) =>
-      acc + (item.product.discountedPrice * item.quantity), 0
+      acc + (item.product.saleType? item.product.discountedSalePrice: item.product.discountedPrice * item.quantity), 0
     );
 
     // Set initial status based on payment method
