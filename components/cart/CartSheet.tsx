@@ -1,76 +1,61 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, X, ShoppingCartIcon } from "lucide-react";
+import { Plus, Minus, X, ShoppingCartIcon } from "lucide-react";
 import { useCart } from "@/providers/CartProvider";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-interface CartItem {
+interface ProductVariant {
   _id: string;
-  product: {
+  color: {
     _id: string;
     name: string;
-    price: number;
-    discountedPrice: number;
-    discountPercent: number;
-    variants: Array<{
-      color: {
-        _id: string;
-        name: string;
-        value: string;
-      };
-      sizes: Array<{
-        size: string;
-        stock: number;
-      }>;
-      images: string[];
-    }>;
+    value: string;
   };
-  variant: {
-    color: string;
+  colorName: string;
+  images: string[];
+  sizes: Array<{
     size: string;
-    colorName: string;
-  };
-  quantity: number;
+    stock: number;
+  }>;
+}
+
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  discountedPrice: number;
+  discountPercent: number;
+  variants: ProductVariant[];
 }
 
 export function CartSheet() {
-  const { items, cartCount, isLoading, updateQuantity, removeFromCart } = useCart();
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const { items, cartCount, updateQuantity, removeFromCart } = useCart();
+  console.log(items);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
 
-  const total = items.reduce((acc, item) => 
-    acc + (item.product.discountedPrice * item.quantity), 0
+  const total = items.reduce(
+    (acc, item) => acc + item.product.discountedPrice * item.quantity,
+    0
   );
 
-  // Helper function to get variant details
-  const getVariantDetails = (product: CartItem['product'], colorId: string) => {
-    const variant = product.variants.find(v => v.color._id === colorId);
-    if (!variant) return {
-      name: 'Color',
-      value: '#000',
-      images: product.variants[0]?.images || []
-    };
-    return {
-      name: variant.color.name,
-      value: variant.color.value,
-      images: variant.images
-    };
+  const getMatchingVariant = (product: Product, colorId: string) => {
+    return product.variants.find((variant) => variant.color._id === colorId);
   };
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    try {
-      setIsUpdating(itemId);
-      await updateQuantity(itemId, newQuantity);
-    } finally {
-      setIsUpdating(null);
-    }
+    await updateQuantity(itemId, newQuantity);
   };
 
   const handleRemoveItem = async (itemId: string) => {
@@ -87,25 +72,16 @@ export function CartSheet() {
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <ShoppingCartIcon className="h-6 w-6" />
-          <AnimatePresence>
-            {!isLoading && cartCount > 0 && (
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                className="absolute -top-2 -right-2"
-              >
-                <Badge 
-                  className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-primary text-primary-foreground"
-                >
-                  {cartCount}
-                </Badge>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {cartCount > 0 && (
+            <div className="absolute -top-2 -right-2">
+              <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-primary text-primary-foreground">
+                {cartCount}
+              </Badge>
+            </div>
+          )}
         </Button>
       </SheetTrigger>
-      
+
       <SheetContent className="flex flex-col w-full sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>Shopping Cart ({cartCount})</SheetTitle>
@@ -125,14 +101,17 @@ export function CartSheet() {
               <div className="space-y-6">
                 {items.map((item) => {
                   if (!item.product || !item.variant) return null;
-                  
-                  const variantDetails = getVariantDetails(item.product, item.variant.color);
-                  
+                  const matchingVariant = getMatchingVariant(
+                    item.product,
+                    item.variant.color
+                  );
+                  if (!matchingVariant) return null;
+
                   return (
                     <div key={item._id} className="flex gap-4">
                       <div className="relative aspect-square h-24 w-24 rounded-lg overflow-hidden bg-gray-100">
                         <Image
-                          src={variantDetails.images[0]}
+                          src={matchingVariant.images[0]}
                           alt={item.product.name}
                           fill
                           className="object-cover"
@@ -141,19 +120,24 @@ export function CartSheet() {
                       <div className="flex flex-1 flex-col">
                         <div className="flex justify-between">
                           <div>
-                            <h4 className="font-medium line-clamp-2">{item.product.name}</h4>
+                            <h4 className="font-medium line-clamp-2">
+                              {item.product.name}
+                            </h4>
                             <div className="flex items-center gap-2 mt-1">
-                              {/* <div 
+                              <div
                                 className="h-3 w-3 rounded-full border"
-                                style={{ backgroundColor: variantDetails.value }}
-                              /> */}
+                                style={{
+                                  backgroundColor: matchingVariant.color.value,
+                                }}
+                              />
                               <span className="text-sm text-muted-foreground">
-                                {item.variant.colorName} / {item.variant.size}
+                                {matchingVariant.colorName} /{" "}
+                                {item.variant.size}
                               </span>
                             </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleRemoveItem(item._id)}
@@ -168,36 +152,42 @@ export function CartSheet() {
                         </div>
                         <div className="flex items-center justify-between mt-4">
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8"
-                              onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
-                              disabled={item.quantity <= 1 || isUpdating === item._id}
+                              onClick={() =>
+                                handleUpdateQuantity(
+                                  item._id,
+                                  item.quantity - 1
+                                )
+                              }
+                              disabled={item.quantity <= 1}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                            {isUpdating === item._id ? (
-                              <div className="w-8 h-8 flex items-center justify-center">
-                                <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                              </div>
-                            ) : (
-                              <span className="w-8 text-center">
-                                {item.quantity}
-                              </span>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <span className="w-8 text-center">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8"
-                              onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
-                              disabled={isUpdating === item._id}
+                              onClick={() =>
+                                handleUpdateQuantity(
+                                  item._id,
+                                  item.quantity + 1
+                                )
+                              }
+                              disabled={item.quantity === item.stock}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
                           <p className="font-medium">
-                            {formatPrice(item.product.discountedPrice * item.quantity)}
+                            {formatPrice(
+                              item.product.discountedPrice * item.quantity
+                            )}
                           </p>
                         </div>
                       </div>
@@ -212,13 +202,11 @@ export function CartSheet() {
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
               </div>
-              <Button 
+              <Button
                 className="w-full bg-black hover:bg-black/90 h-12 text-base"
                 asChild
               >
-                <Link href="/checkout">
-                  Proceed to Checkout
-                </Link>
+                <Link href="/checkout">Proceed to Checkout</Link>
               </Button>
             </div>
           </>
@@ -226,4 +214,4 @@ export function CartSheet() {
       </SheetContent>
     </Sheet>
   );
-} 
+}

@@ -1,6 +1,4 @@
-import { ProductDetails } from '@/components/products/ProductDetails';
-import { Suspense } from 'react';
-
+import { ProductDetails } from "@/components/products/ProductDetails";
 interface Props {
   params: {
     id: string;
@@ -10,9 +8,7 @@ interface Props {
 export default function ProductPage({ params }: Props) {
   return (
     <div className="min-h-screen py-10">
-      <Suspense fallback={<div>Loading...</div>}>
-        <ProductDetails productId={params.id} />
-      </Suspense>
+      <ProductDetails productId={params.id} />{" "}
     </div>
   );
-} 
+}

@@ -20,6 +20,10 @@ interface Product {
   price: number;
   discountPercent: number;
   discountedPrice: number;
+  saleType: boolean;
+  salePrice: number;
+  salePriceDiscount: number;
+  discountedSalePrice: number;
   gender: string;
   category: {
     _id: string;
@@ -161,6 +165,36 @@ export function ProductView({ productId }: ProductViewProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Sale Price */}
+          {product.saleType && (
+            <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <Box className="h-4 w-4" />
+                <span>Sale Price Details</span>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Sale Price</span>
+                  <span className="font-medium">{formatPrice(product.salePrice)}</span>
+                </div>
+                {product.salePriceDiscount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-red-600">
+                      <span>Discount</span>
+                      <span>-{product.salePriceDiscount}%</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t text-green-600">
+                      <span className="font-medium">Final Price</span>
+                      <span className="text-lg font-bold">{formatPrice(product.discountedSalePrice)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          )}
 
           {/* Specifications */}
           {Object.keys(product.specifications).length > 0 && (

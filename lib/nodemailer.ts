@@ -28,8 +28,10 @@ export const sendOrderConfirmationEmail = async (
         }>;
       };
       variant: {
-        color: string;
-        colorName: string;
+        color: {
+          name: string;
+          value: string;
+        };
         size: string;
       };
       quantity: number;
@@ -89,7 +91,7 @@ export const sendOrderConfirmationEmail = async (
                       <div class="product-details">
                         <h3 class="product-name">${item.product.name}</h3>
                         <p class="product-meta">
-                          Color: ${item.variant.colorName} | Size: ${item.variant.size} | Quantity: ${item.quantity}
+                          Color: ${item.variant.color.name} | Size: ${item.variant.size} | Quantity: ${item.quantity}
                         </p>
                         <p class="product-price">₹${(item.product.discountedPrice * item.quantity).toFixed(2)}</p>
                         ${item.product.price > item.product.discountedPrice ? `

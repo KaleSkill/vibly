@@ -8,7 +8,6 @@ export function ProductList() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [colors, setColors] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState([]);
 
   useEffect(() => {
@@ -32,8 +31,6 @@ export function ProductList() {
         setColors(colorsData);
       } catch (error) {
         console.error('Error:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -60,10 +57,6 @@ export function ProductList() {
 
     setFilteredProducts(filtered);
   };
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

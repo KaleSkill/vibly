@@ -4,6 +4,10 @@ export interface Product {
   price: number;
   discountedPrice: number;
   discountPercent: number;
+  saleType: boolean;
+  salePriceDiscount: number;
+  discountedSalePrice: number;
+  salePrice: number;
   variants: Array<{
     color: {
       _id: string;
@@ -42,6 +46,10 @@ export interface Order {
       price: number;
       discountedPrice: number;
       discountPercent: number;
+      saleType: boolean;
+      salePriceDiscount: number;
+      discountedSalePrice: number;
+      salePrice: number;
       variants: Array<{
         color: {
           _id: string;

@@ -7,9 +7,16 @@ const cartItemSchema = new mongoose.Schema({
     required: true
   },
   variant: {
-    color: String,
-    colorName: String,
-    size: String
+    color: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Color',
+      required: true
+    },
+    size: {
+      type: String,
+      enum: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+      required: true
+    }
   },
   quantity: {
     type: Number,
@@ -25,14 +32,6 @@ const cartSchema = new mongoose.Schema({
     required: true
   },
   items: [cartItemSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
 const Cart = mongoose.models.Cart || mongoose.model('Cart', cartSchema);

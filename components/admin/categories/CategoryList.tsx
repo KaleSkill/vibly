@@ -70,7 +70,7 @@ export function CategoryList() {
       });
 
       if (response.ok) {
-        setCategories(categories.filter(category => category._id !== id));
+        setCategories(categories?.filter(category => category._id !== id));
         toast({
           title: "Success",
           description: "Category deleted successfully",
@@ -167,7 +167,7 @@ export function CategoryList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((category) => (
+            {categories?.map((category) => (
               <TableRow key={category._id}>
                 <TableCell className="font-medium">{category.name}</TableCell>
                 <TableCell>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Dialog,
@@ -12,20 +12,20 @@ import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
 import Image from "next/image";
 import { Order, OrderStatus } from "@/types";
-import { 
-  Package, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Calendar, 
+import {
+  Package,
+  MapPin,
+  Phone,
+  Mail,
+  Calendar,
   CreditCard,
   Truck,
   User,
   FileDown,
   Trash2,
-  Loader2
+  Loader2,
 } from "lucide-react";
-import { useState } from 'react';
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -37,8 +37,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 interface OrderDetailsProps {
   order: Order | null;
@@ -54,7 +54,11 @@ const statusColors: Record<OrderStatus, string> = {
   cancelled: "destructive",
 } as const;
 
-export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDetailsProps) {
+export function OrderDetailsDialog({
+  order,
+  onClose,
+  onOrderDeleted,
+}: OrderDetailsProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -66,10 +70,10 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
     try {
       setIsDeleting(true);
       const response = await fetch(`/api/admin/orders/${order._id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
-      if (!response.ok) throw new Error('Failed to delete order');
+      if (!response.ok) throw new Error("Failed to delete order");
 
       toast({
         title: "Success",
@@ -96,36 +100,40 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
 
       // Add Header
       doc.setFontSize(20);
-      doc.text('Order Details', 20, 20);
+      doc.text("Order Details", 20, 20);
       doc.setFontSize(12);
       doc.text(`Order #${order._id.slice(-6).toUpperCase()}`, 20, 30);
-      doc.text(`Date: ${format(new Date(order.createdAt), 'PPP')}`, 20, 40);
+      doc.text(`Date: ${format(new Date(order.createdAt), "PPP")}`, 20, 40);
 
       // Add Customer Info
-      doc.text('Customer Information:', 20, 60);
+      doc.text("Customer Information:", 20, 60);
       doc.text(`Name: ${order.shippingAddress.fullName}`, 20, 70);
       doc.text(`Email: ${order.user.email}`, 20, 80);
       doc.text(`Phone: ${order.shippingAddress.phoneNumber}`, 20, 90);
 
       // Add Shipping Address
-      doc.text('Shipping Address:', 20, 110);
+      doc.text("Shipping Address:", 20, 110);
       doc.text(order.shippingAddress.streetAddress, 20, 120);
-      doc.text(`${order.shippingAddress.city}, ${order.shippingAddress.state}`, 20, 130);
+      doc.text(
+        `${order.shippingAddress.city}, ${order.shippingAddress.state}`,
+        20,
+        130
+      );
       doc.text(order.shippingAddress.pincode, 20, 140);
 
       // Add Order Items
-      doc.text('Order Items:', 20, 160);
-      const tableData = order.items.map(item => [
+      doc.text("Order Items:", 20, 160);
+      const tableData = order.items.map((item) => [
         item.product.name,
-        item.variant.colorName,
+        item.variant.color.value,
         item.variant.size,
         item.quantity.toString(),
-        formatPrice(item.product.discountedPrice * item.quantity)
+        formatPrice(item.product.saleType?item.product.discountedSalePrice:item.product.discountedPrice * item.quantity),
       ]);
 
       (doc as any).autoTable({
         startY: 170,
-        head: [['Product', 'Color', 'Size', 'Qty', 'Price']],
+        head: [["Product", "Color", "Size", "Qty", "Price"]],
         body: tableData,
       });
 
@@ -135,7 +143,7 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
 
       // Save PDF
       doc.save(`order-${order._id.slice(-6).toUpperCase()}.pdf`);
-      
+
       toast({
         title: "Success",
         description: "Order details exported to PDF",
@@ -164,7 +172,7 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
                 </DialogTitle>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  {format(new Date(order.createdAt), 'PPP')}
+                  {format(new Date(order.createdAt), "PPP")}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -204,7 +212,10 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
                   Order Status
                 </h3>
                 <div className="flex items-center gap-3">
-                  <Badge variant={statusColors[order.status]} className="capitalize">
+                  <Badge
+                    variant={statusColors[order.status]}
+                    className="capitalize"
+                  >
                     {order.status}
                   </Badge>
                   <span className="text-sm text-muted-foreground">•</span>
@@ -237,10 +248,14 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
                   <div className="flex items-start gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                     <div>
-                      <p className="font-medium">{order.shippingAddress.fullName}</p>
+                      <p className="font-medium">
+                        {order.shippingAddress.fullName}
+                      </p>
                       <p>{order.shippingAddress.streetAddress}</p>
                       <p>
-                        {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
+                        {order.shippingAddress.city},{" "}
+                        {order.shippingAddress.state}{" "}
+                        {order.shippingAddress.pincode}
                       </p>
                     </div>
                   </div>
@@ -256,7 +271,10 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
               </h3>
               <div className="space-y-4">
                 {order.items.map((item) => (
-                  <div key={item.product._id} className="flex gap-4 p-4 border rounded-lg bg-gray-50/50">
+                  <div
+                    key={item.product._id}
+                    className="flex gap-4 p-4 border rounded-lg bg-gray-50/50"
+                  >
                     <div className="relative h-24 w-24 rounded-lg overflow-hidden bg-white border">
                       <Image
                         src={item.product.variants[0].images[0]}
@@ -280,10 +298,12 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
                       </div>
                       <div className="mt-2 space-y-1">
                         <div className="text-sm font-medium">
-                          {formatPrice(item.product.discountedPrice * item.quantity)}
+                          {formatPrice(
+                            item.product.saleType?item.product.discountedSalePrice:item.product.discountedPrice * item.quantity
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {formatPrice(item.product.discountedPrice)} per item
+                          {formatPrice(item.product.saleType?item.product.salePrice:item.product.discountedPrice)} per item
                         </div>
                       </div>
                     </div>
@@ -313,13 +333,16 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Order</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the order
-              and remove all associated data.
+              This action cannot be undone. This will permanently delete the
+              order and remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -341,4 +364,4 @@ export function OrderDetailsDialog({ order, onClose, onOrderDeleted }: OrderDeta
       </AlertDialog>
     </>
   );
-} 
+}

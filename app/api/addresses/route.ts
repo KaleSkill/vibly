@@ -16,7 +16,8 @@ export async function GET() {
       .sort({ isDefault: -1, createdAt: -1 });
 
     return NextResponse.json(addresses);
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error('Error fetching addresses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch addresses' },
       { status: 500 }
@@ -46,9 +47,45 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(address);
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error('Error creating address:', error);
     return NextResponse.json(
       { error: 'Failed to create address' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const data = await req.json();
+    const { _id, ...updateData } = data;
+
+    await connectDB();
+
+    const address = await Address.findOneAndUpdate(
+      { _id, user: session.user.id },
+      updateData,
+      { new: true }
+    );
+
+    if (!address) {
+      return NextResponse.json(
+        { error: 'Address not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(address);
+  } catch (error: unknown) {
+    console.error('Error updating address:', error);
+    return NextResponse.json(
+      { error: 'Failed to update address' },
       { status: 500 }
     );
   }

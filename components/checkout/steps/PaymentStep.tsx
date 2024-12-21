@@ -25,7 +25,6 @@ const paymentMethods = [
   },
 ] as const;
 
-type PaymentMethod = typeof paymentMethods[number]['id'];
 
 export function PaymentStep() {
   const router = useRouter();

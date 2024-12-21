@@ -5,6 +5,7 @@ import connectDB from '@/lib/db';
 import Order from '@/models/order';
 import Address from '@/models/address';
 import { sendOrderConfirmationEmail } from '@/lib/nodemailer';
+import Color from '@/models/color';
 
 export async function POST(req: Request) {
   try {
@@ -14,8 +15,17 @@ export async function POST(req: Request) {
     }
 
     const { items, shippingAddressId, paymentMethod } = await req.json();
-
+    console.log(items, shippingAddressId, paymentMethod);
     await connectDB();
+
+    // Modify items to populate the color reference
+    const populatedItems = await Promise.all(items.map(async (item: any) => ({
+      ...item,
+      variant: {
+        ...item.variant,
+        color: await Color.findById(item.variant.color)
+      }
+    })));
 
     // Fetch the complete address details
     const shippingAddress = await Address.findById(shippingAddressId).lean();
@@ -26,17 +36,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const total = items.reduce((acc: number, item: any) => 
+    const total = populatedItems.reduce((acc: number, item: any) =>
       acc + (item.product.discountedPrice * item.quantity), 0
     );
 
     // Set initial status based on payment method
     const initialStatus = paymentMethod === 'cod' ? 'pending' : 'confirmed';
-  
+
 
     const order = await Order.create({
       user: session.user.id,
-      items,
+      populatedItems,
       shippingAddress,
       paymentMethod,
       status: initialStatus,
@@ -47,7 +57,7 @@ export async function POST(req: Request) {
     if (session.user.email) {
       await sendOrderConfirmationEmail(session.user.email, {
         orderId: order._id.toString(),
-        items,
+        items: populatedItems,
         total,
         shippingAddress: {
           fullName: shippingAddress.fullName,

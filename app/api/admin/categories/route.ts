@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Category from '@/models/category';
-import slugify from 'slugify';
 
 export async function GET() {
   try {
@@ -21,16 +20,15 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.role === 'admin') {
+    if (session?.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const data = await req.json();
-    const slug = slugify(data.name, { lower: true });
 
     await connectDB();
-    const category = await Category.create({ ...data, slug });
-    
+    const category = await Category.create(data);
+
     return NextResponse.json(category);
   } catch (error: any) {
     if (error.code === 11000) {

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -10,159 +9,83 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SlidersHorizontal } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SlidersHorizontal } from "lucide-react";
+import { useProducts } from "@/contexts/ProductContext";
+import { ColorFilter } from "./ColorFilter";
+import { PriceFilter } from "./PriceFilter";
 
-interface Category {
-  _id: string;
-  name: string;
-}
+const sortOptions = [
+  { value: "recommended", label: "Recommended" },
+  { value: "price-low-high", label: "Price: Low to High" },
+  { value: "price-high-low", label: "Price: High to Low" },
+  { value: "name-a-z", label: "Name: A to Z" },
+  { value: "name-z-a", label: "Name: Z to A" },
+  { value: "newest", label: "What's New" },
+];
 
-interface Color {
-  _id: string;
-  name: string;
-  value: string;
-}
+export function ProductFilters() {
+  const { sortBy, setSortBy, clearFilters } = useProducts();
+  const [isOpen, setIsOpen] = useState(false);
 
-interface ProductFiltersProps {
-  categories: Category[];
-  colors: Color[];
-  onFilterChange: (filters: any) => void;
-}
-
-export function ProductFilters({ categories, colors, onFilterChange }: ProductFiltersProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 10000]);
-  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-
-  const handleFilterChange = () => {
-    onFilterChange({
-      categories: selectedCategories,
-      colors: selectedColors,
-      priceRange,
-    });
-  };
-
-  const clearFilters = () => {
-    setSelectedCategories([]);
-    setSelectedColors([]);
-    setPriceRange([0, 10000]);
-    onFilterChange({
-      categories: [],
-      colors: [],
-      priceRange: [0, 10000],
-    });
-  };
+  const FilterContent = () => (
+    <div className="space-y-6">
+      <PriceFilter onApply={() => setIsOpen(false)} />
+      <ColorFilter />
+      <Button variant="outline" onClick={clearFilters} className="w-full mt-4">
+        Clear All Filters
+      </Button>
+    </div>
+  );
 
   return (
-    <>
-      {/* Mobile Filters */}
-      <div className="lg:hidden">
-        <Sheet>
+    <div className="sticky top-4">
+      {/* Mobile Filter Button and Sort */}
+      <div className="lg:hidden flex items-center gap-4 mb-4">
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline">
+            <Button variant="outline" className="w-full">
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Filters
             </Button>
           </SheetTrigger>
-          <SheetContent>
+          <SheetContent side="left" className="w-[300px] sm:w-[400px]">
             <SheetHeader>
               <SheetTitle>Filters</SheetTitle>
             </SheetHeader>
-            <div className="mt-6 space-y-6">
-              {/* Filter content */}
-              <div className="space-y-4">
-                <h3 className="font-medium">Categories</h3>
-                <div className="space-y-2">
-                  {categories.map((category) => (
-                    <label
-                      key={category._id}
-                      className="flex items-center space-x-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category._id)}
-                        onChange={(e) => {
-                          const newCategories = e.target.checked
-                            ? [...selectedCategories, category._id]
-                            : selectedCategories.filter(id => id !== category._id);
-                          setSelectedCategories(newCategories);
-                          handleFilterChange();
-                        }}
-                        className="rounded border-gray-300"
-                      />
-                      <span>{category.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium">Colors</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {colors.map((color) => (
-                    <label
-                      key={color._id}
-                      className="flex items-center space-x-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedColors.includes(color._id)}
-                        onChange={(e) => {
-                          const newColors = e.target.checked
-                            ? [...selectedColors, color._id]
-                            : selectedColors.filter(id => id !== color._id);
-                          setSelectedColors(newColors);
-                          handleFilterChange();
-                        }}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border"
-                          style={{ backgroundColor: color.value }}
-                        />
-                        {color.name}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={clearFilters}
-              >
-                Clear Filters
-              </Button>
+            <div className="mt-8">
+              <FilterContent />
             </div>
           </SheetContent>
         </Sheet>
       </div>
 
-      {/* Desktop Filters */}
-      <div className="hidden lg:block">
-        <Card className="p-6 space-y-6">
-          <div className="space-y-4">
-            <h3 className="font-medium">Categories</h3>
-            {/* Same category filters as mobile */}
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-medium">Colors</h3>
-            {/* Same color filters as mobile */}
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={clearFilters}
-          >
-            Clear Filters
-          </Button>
-        </Card>
+      {/* Sort Dropdown */}
+      <div className="mb-6">
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            {sortOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </>
+
+      {/* Desktop Filters */}
+      <div className="hidden lg:block space-y-6 bg-white rounded-lg p-4 border">
+        <FilterContent />
+      </div>
+    </div>
   );
 } 

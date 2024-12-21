@@ -11,7 +11,7 @@ export function Header() {
   const { data: session } = useSession();
 
   return (
-    <header className="border-b sticky top-0 bg-white/80 backdrop-blur-md z-50">
+    <header className="border-b sticky top-0 bg-white z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
@@ -29,22 +29,22 @@ export function Header() {
               All Products
             </Link>
             <Link
-              href="/products?category=men"
+              href="/products?gender=men"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Men
             </Link>
             <Link
-              href="/products?category=women"
+              href="/products?gender=women"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
               Women
             </Link>
             <Link
-              href="/products?category=kids"
+              href="/products?gender=unisex"
               className="text-sm font-medium hover:text-primary transition-colors"
             >
-              Kids
+              Unisex
             </Link>
           </nav>
 

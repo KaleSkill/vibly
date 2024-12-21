@@ -8,14 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/providers/CartProvider';
 import { Product } from '@/types';
 
 export function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const { toast } = useToast();
   const { addToCart, items } = useCart();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 

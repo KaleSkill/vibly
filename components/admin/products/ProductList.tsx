@@ -13,13 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash, Eye, MoreHorizontal, Archive, CheckCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -70,8 +63,6 @@ const sortOptions: SortOption[] = [
 export function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("default");
@@ -313,7 +304,7 @@ export function ProductList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
+              {categories?.map((category) => (
                 <SelectItem key={category._id} value={category._id}>
                   {category.name}
                 </SelectItem>
@@ -356,11 +347,11 @@ export function ProductList() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             No products found
-            {statusFilter !== 'all' && <> with status "{statusFilter}"</>}
-            {categoryFilter !== 'all' && categories.find(c => c._id === categoryFilter) && 
-              <> in {categories.find(c => c._id === categoryFilter)?.name}</>
+            {statusFilter !== 'all' && <> with status &quot;{statusFilter}&quot;</>}
+            {categoryFilter !== 'all' && categories?.find(c => c._id === categoryFilter) && 
+              <> in {categories?.find(c => c._id === categoryFilter)?.name}</>
             }
-            {searchQuery && <> matching "{searchQuery}"</>}
+            {searchQuery && <> matching &quot;{searchQuery}&quot;</>}
           </p>
           <Button 
             variant="outline" 

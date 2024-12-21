@@ -36,10 +36,10 @@ const specificationSchema = new mongoose.Schema({
 }, { _id: false });
 
 const productSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
+  name: {
+    type: String,
     required: true,
-    trim: true 
+    trim: true
   },
   description: {
     type: String,
@@ -51,27 +51,27 @@ const productSchema = new mongoose.Schema({
     required: false,
     default: () => ({})
   },
-  price: { 
-    type: Number, 
+  price: {
+    type: Number,
     required: true,
     min: 0
   },
-  discountPercent: { 
+  discountPercent: {
     type: Number,
     min: 0,
     max: 100,
     default: 0
   },
-  discountedPrice: { 
+  discountedPrice: {
     type: Number,
     min: 0,
-    default: function(this: any) {
+    default: function (this: mongoose.Document & { price: number }) {
       return this.price;
     }
   },
   gender: {
     type: String,
-    enum: ['men', 'women', 'kids', 'unisex'],
+    enum: ['men', 'women', 'unisex'],
     required: [true, 'Gender is required']
   },
   category: {
@@ -80,10 +80,6 @@ const productSchema = new mongoose.Schema({
     required: true
   },
   variants: [variantSchema],
-  featured: {
-    type: Boolean,
-    default: false
-  },
   paymentOptions: {
     cod: { type: Boolean, default: true },
     online: { type: Boolean, default: true }
@@ -113,22 +109,22 @@ const productSchema = new mongoose.Schema({
     min: 0,
     default: 0
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
 // Calculate both regular discounted price and sale discounted price
-productSchema.pre('save', function(next) {
+productSchema.pre('save', function (next) {
   // Calculate regular discounted price
   if (this.isModified('price') || this.isModified('discountPercent')) {
-    this.discountedPrice = this.discountPercent > 0 
+    this.discountedPrice = this.discountPercent > 0
       ? Math.round(this.price - (this.price * (this.discountPercent / 100)))
       : this.price;
   }
 
   // Calculate sale discounted price
   if (this.isModified('salePrice') || this.isModified('salePriceDiscount')) {
-    this.discountedSalePrice = this.salePriceDiscount > 0 
+    this.discountedSalePrice = this.salePriceDiscount > 0
       ? Math.round(this.salePrice - (this.salePrice * (this.salePriceDiscount / 100)))
       : this.salePrice;
   }

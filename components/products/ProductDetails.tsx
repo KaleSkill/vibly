@@ -1,16 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Minus, Plus, MapPin, Truck, XCircle, Calendar, Star, StarHalf, MoreVertical, Pencil, Trash2, AlertCircle } from 'lucide-react';
-import { formatPrice } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { format, addDays } from 'date-fns';
+import {
+  ShoppingCart,
+  Minus,
+  Plus,
+  MapPin,
+  Truck,
+  XCircle,
+  Calendar,
+  Star,
+  StarHalf,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
+import { formatPrice } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { format, addDays } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -20,18 +34,18 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import Link from 'next/link';
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSession } from 'next-auth/react';
+import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCart } from '@/providers/CartProvider';
-import { Product } from '@/types';
-import { useRouter } from 'next/navigation';
+import { useCart } from "@/providers/CartProvider";
+import { Product } from "@/types";
+import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 
 interface Review {
@@ -76,32 +90,134 @@ interface Product {
 
 // Add this size order mapping
 const sizeOrder = {
-  'S': 1,
-  'M': 2,
-  'L': 3,
-  'XL': 4,
-  'XXL': 5,
-  'XXXL': 6
+  S: 1,
+  M: 2,
+  L: 3,
+  XL: 4,
+  XXL: 5,
+  XXXL: 6,
 };
+
+// Move helper functions outside the component
+const getStockWarning = (stock: number) => {
+  if (stock <= 3) {
+    return {
+      message: `Only ${stock} items left!`,
+      className: "text-red-600 font-medium",
+    };
+  }
+  if (stock < 10) {
+    return {
+      message: `Only ${stock} items left`,
+      className: "text-yellow-600",
+    };
+  }
+  return null;
+};
+
+// Helper function to sort sizes
+const sortSizes = (sizes: Array<{ size: string; stock: number }>) => {
+  return [...sizes].sort((a, b) => {
+    const orderA = sizeOrder[a.size as keyof typeof sizeOrder] || 999;
+    const orderB = sizeOrder[b.size as keyof typeof sizeOrder] || 999;
+    return orderA - orderB;
+  });
+};
+
+// Memoize the RatingStars component
+const RatingStars = memo(function RatingStars({ rating }: { rating: number }) {
+  return (
+    <div className="flex">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            "h-4 w-4",
+            star <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+          )}
+        />
+      ))}
+    </div>
+  );
+});
+
+// Create a memoized variant button component
+const VariantButton = memo(function VariantButton({
+  variant,
+  index,
+  isSelected,
+  onClick,
+}: {
+  variant: Product["variants"][0];
+  index: number;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      key={variant.color._id}
+      onClick={onClick}
+      className={cn(
+        "w-9 h-9 rounded-full transition-all",
+        isSelected && "ring-2 ring-black ring-offset-2"
+      )}
+    >
+      <div
+        className="w-full h-full rounded-full"
+        style={{ backgroundColor: variant.color.value }}
+      />
+    </button>
+  );
+});
+
+// Create a memoized size button component
+const SizeButton = memo(function SizeButton({
+  size,
+  isSelected,
+  isDisabled,
+  onClick,
+}: {
+  size: { size: string; stock: number };
+  isSelected: boolean;
+  isDisabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={isDisabled}
+      className={cn(
+        "py-2 text-sm border rounded-md transition-colors",
+        isDisabled && "bg-gray-50 text-gray-400 cursor-not-allowed",
+        isSelected && "border-black bg-black text-white",
+        !isDisabled && !isSelected && "hover:border-gray-400"
+      )}
+    >
+      {size.size}
+    </button>
+  );
+});
+
+// Add this CSS class near the top of the file with other constants
+const noSpinnerClass = "appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
 export function ProductDetails({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState(0);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedImage, setSelectedImage] = useState('');
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedImage, setSelectedImage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [pincode, setPincode] = useState('');
+  const [pincode, setPincode] = useState("");
   const [checkingPincode, setCheckingPincode] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<{
     expectedDate?: Date;
   } | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [isAddingReview, setIsAddingReview] = useState(false);
   const [newRating, setNewRating] = useState(5);
-  const [newComment, setNewComment] = useState('');
+  const [newComment, setNewComment] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
@@ -111,32 +227,55 @@ export function ProductDetails({ productId }: { productId: string }) {
   const router = useRouter();
   const [availableStock, setAvailableStock] = useState(0);
 
-  // Check if product is in cart
-  const isInCart = items.some(item => item.product._id === productId);
+  // Add isInCart check
+  const isInCart = items.some((item) => {
+    const currentVariant = product?.variants[selectedVariant];
+    return (
+      item.product._id === productId &&
+      item.variant.color === currentVariant?.color._id &&
+      item.variant.size === selectedSize
+    );
+  });
+
+  // Get available stock without considering cart quantity
+  useEffect(() => {
+    if (product && selectedSize) {
+      const currentVariant = product.variants[selectedVariant];
+      const sizeStock =
+        currentVariant.sizes.find((s) => s.size === selectedSize)?.stock || 0;
+
+      setAvailableStock(sizeStock);
+
+      // Reset quantity if it exceeds available stock
+      if (quantity > sizeStock) {
+        setQuantity(Math.max(1, sizeStock));
+      }
+    }
+  }, [product, selectedVariant, selectedSize]);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setIsLoading(true);
         const response = await fetch(`/api/products/${productId}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch product');
+          throw new Error("Failed to fetch product");
         }
-        
+
         const data = await response.json();
         setProduct(data);
-        
+
         if (data.variants?.[0]?.images?.[0]) {
           setSelectedImage(data.variants[0].images[0]);
         }
-        
+
         if (data.variants?.[0]?.sizes?.[0]?.size) {
           setSelectedSize(data.variants[0].sizes[0].size);
         }
       } catch (error) {
-        console.error('Error:', error);
-        setError('Failed to load product details');
+        console.error("Error:", error);
+        setError("Failed to load product details");
         toast({
           title: "Error",
           description: "Failed to load product details",
@@ -156,29 +295,16 @@ export function ProductDetails({ productId }: { productId: string }) {
     const fetchReviews = async () => {
       try {
         const response = await fetch(`/api/products/${productId}/reviews`);
-        if (!response.ok) throw new Error('Failed to fetch reviews');
+        if (!response.ok) throw new Error("Failed to fetch reviews");
         const data = await response.json();
         setReviews(data);
       } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
       }
     };
 
     fetchReviews();
   }, [productId]);
-
-  useEffect(() => {
-    if (product && selectedSize) {
-      const currentVariant = product.variants[selectedVariant];
-      const sizeStock = currentVariant.sizes.find(s => s.size === selectedSize)?.stock || 0;
-      setAvailableStock(sizeStock);
-      
-      // Reset quantity if it exceeds available stock
-      if (quantity > sizeStock) {
-        setQuantity(sizeStock);
-      }
-    }
-  }, [product, selectedVariant, selectedSize]);
 
   const checkDelivery = async () => {
     if (!pincode || pincode.length !== 6) {
@@ -192,20 +318,20 @@ export function ProductDetails({ productId }: { productId: string }) {
 
     setCheckingPincode(true);
     // Simulate pincode check
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Set delivery date (4-5 days from now)
     setDeliveryInfo({
-      expectedDate: addDays(new Date(), 4)
+      expectedDate: addDays(new Date(), 4),
     });
-    
+
     setCheckingPincode(false);
   };
 
   const getInitials = (name: string | null, email: string | null) => {
     if (name?.trim()) return name.charAt(0).toUpperCase();
     if (email?.trim()) return email.charAt(0).toUpperCase();
-    return 'U';
+    return "U";
   };
 
   const handleAddReview = async () => {
@@ -214,9 +340,9 @@ export function ProductDetails({ productId }: { productId: string }) {
     try {
       setIsSubmitting(true);
       const response = await fetch(`/api/products/${productId}/reviews`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           rating: newRating,
@@ -226,24 +352,24 @@ export function ProductDetails({ productId }: { productId: string }) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to add review');
+        throw new Error(error.error || "Failed to add review");
       }
 
       const newReview = await response.json();
-      
+
       const transformedReview: Review = {
         ...newReview,
         user: {
           name: newReview.user?.name || null,
           email: newReview.user?.email || null,
-          image: newReview.user?.image || null
-        }
+          image: newReview.user?.image || null,
+        },
       };
 
       setReviews([transformedReview, ...reviews]);
-      
+
       // Reset form and close dialog
-      setNewComment('');
+      setNewComment("");
       setNewRating(5);
       setIsDialogOpen(false);
 
@@ -267,31 +393,36 @@ export function ProductDetails({ productId }: { productId: string }) {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch(`/api/products/${productId}/reviews/${editingReview._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          rating: newRating,
-          comment: newComment,
-        }),
-      });
+      const response = await fetch(
+        `/api/products/${productId}/reviews/${editingReview._id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            rating: newRating,
+            comment: newComment,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update review');
+        throw new Error(error.error || "Failed to update review");
       }
 
       const updatedReview = await response.json();
-      
+
       // Update reviews list
-      setReviews(reviews.map(review => 
-        review._id === editingReview._id ? updatedReview : review
-      ));
-      
+      setReviews(
+        reviews.map((review) =>
+          review._id === editingReview._id ? updatedReview : review
+        )
+      );
+
       // Reset form and close dialog
-      setNewComment('');
+      setNewComment("");
       setNewRating(5);
       setEditingReview(null);
       setIsDialogOpen(false);
@@ -312,20 +443,23 @@ export function ProductDetails({ productId }: { productId: string }) {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!confirm('Are you sure you want to delete this review?')) return;
+    if (!confirm("Are you sure you want to delete this review?")) return;
 
     try {
-      const response = await fetch(`/api/products/${productId}/reviews/${reviewId}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/products/${productId}/reviews/${reviewId}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete review');
+        throw new Error(error.error || "Failed to delete review");
       }
 
       // Remove review from list
-      setReviews(reviews.filter(review => review._id !== reviewId));
+      setReviews(reviews.filter((review) => review._id !== reviewId));
 
       toast({
         title: "Success",
@@ -340,38 +474,53 @@ export function ProductDetails({ productId }: { productId: string }) {
     }
   };
 
-  const RatingStars = ({ rating }: { rating: number }) => (
-    <div className="flex">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          className={cn(
-            "h-4 w-4",
-            star <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-          )}
-        />
-      ))}
-    </div>
-  );
-
   const incrementQuantity = () => {
     if (quantity < availableStock) {
-      setQuantity(prev => prev + 1);
+      setQuantity((prev) => prev + 1);
     }
   };
 
   const decrementQuantity = () => {
     if (quantity > 1) {
-      setQuantity(prev => prev - 1);
+      setQuantity((prev) => prev - 1);
     }
   };
 
-  const handleQuantityChange = (value: number) => {
-    if (value >= 1 && value <= availableStock) {
-      setQuantity(value);
-    }
-  };
+  // Memoize stock warning
+  const stockWarning = useMemo(
+    () => getStockWarning(availableStock),
+    [availableStock]
+  );
 
+  // Memoize sorted sizes
+  const sortedSizes = useMemo(() => {
+    if (!product) return [];
+    return sortSizes(product.variants[selectedVariant].sizes);
+  }, [product, selectedVariant]);
+
+  // Memoize handlers
+  const handleQuantityChange = useCallback(
+    (value: number) => {
+      if (value >= 1 && value <= availableStock) {
+        setQuantity(value);
+      }
+    },
+    [availableStock]
+  );
+
+  const handleColorSelect = useCallback(
+    (index: number) => {
+      setSelectedVariant(index);
+      setSelectedImage(product!.variants[index].images[0]);
+    },
+    [product]
+  );
+
+  const handleSizeSelect = useCallback((size: string) => {
+    setSelectedSize(size);
+  }, []);
+
+  // Improved add to cart handler
   const handleAddToCart = async () => {
     if (!selectedSize) {
       toast({
@@ -382,10 +531,36 @@ export function ProductDetails({ productId }: { productId: string }) {
       return;
     }
 
-    if (quantity > availableStock) {
+    const currentVariant = product!.variants[selectedVariant];
+    const currentSize = currentVariant.sizes.find(
+      (s) => s.size === selectedSize
+    );
+
+    if (!currentSize) {
       toast({
         title: "Error",
-        description: "Selected quantity exceeds available stock",
+        description: "Selected size not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if adding this quantity would exceed stock
+    const existingCartItem = items.find(
+      (item) =>
+        item.product._id === product!._id &&
+        item.variant.color === currentVariant.color._id &&
+        item.variant.size === selectedSize
+    );
+
+    const cartQuantity = existingCartItem?.quantity || 0;
+
+    if (quantity + cartQuantity > currentSize.stock) {
+      toast({
+        title: "Error",
+        description: `Cannot add ${quantity} more items. Only ${
+          currentSize.stock - cartQuantity
+        } remaining in stock.`,
         variant: "destructive",
       });
       return;
@@ -393,18 +568,22 @@ export function ProductDetails({ productId }: { productId: string }) {
 
     setIsAddingToCart(true);
     try {
-      await addToCart(product._id, {
-        color: product.variants[selectedVariant].color._id,
-        colorName: product.variants[selectedVariant].color.name,
-        size: selectedSize
-      }, quantity);
+      await addToCart(
+        product!._id,
+        {
+          color: currentVariant.color._id,
+          colorName: currentVariant.color.name,
+          size: selectedSize,
+        },
+        quantity
+      );
 
       toast({
         title: "Success",
         description: "Added to cart",
       });
     } catch (error) {
-      console.error('Failed to add to cart:', error);
+      console.error("Failed to add to cart:", error);
       toast({
         title: "Error",
         description: "Failed to add to cart",
@@ -415,34 +594,6 @@ export function ProductDetails({ productId }: { productId: string }) {
     }
   };
 
-  const handleBuyNow = async () => {
-    if (!selectedSize || !product) {
-      toast({
-        title: "Error",
-        description: "Please select a size",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const currentVariant = product.variants[selectedVariant];
-      await addToCart(productId, {
-        color: currentVariant.color._id,
-        colorName: currentVariant.color.name,
-        size: selectedSize,
-      }, quantity);
-
-      router.push('/checkout');
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to proceed to checkout",
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     // Only run if product exists
     if (product && product.variants) {
@@ -450,39 +601,15 @@ export function ProductDetails({ productId }: { productId: string }) {
       const availableSizes = product.variants[selectedVariant].sizes;
       if (availableSizes.length > 0) {
         // Select first available size with stock
-        const firstAvailableSize = availableSizes.find(size => size.stock > 0);
-        setSelectedSize(firstAvailableSize ? firstAvailableSize.size : '');
+        const firstAvailableSize = availableSizes.find(
+          (size) => size.stock > 0
+        );
+        setSelectedSize(firstAvailableSize ? firstAvailableSize.size : "");
       } else {
-        setSelectedSize('');
+        setSelectedSize("");
       }
     }
   }, [selectedVariant, product]);
-
-  // Helper function to sort sizes
-  const sortSizes = (sizes: Array<{ size: string; stock: number }>) => {
-    return [...sizes].sort((a, b) => {
-      const orderA = sizeOrder[a.size as keyof typeof sizeOrder] || 999;
-      const orderB = sizeOrder[b.size as keyof typeof sizeOrder] || 999;
-      return orderA - orderB;
-    });
-  };
-
-  // Get stock warning message and color
-  const getStockWarning = (stock: number) => {
-    if (stock <= 3) {
-      return {
-        message: `Only ${stock} items left!`,
-        className: "text-red-600 font-medium"
-      };
-    }
-    if (stock < 10) {
-      return {
-        message: `Only ${stock} items left`,
-        className: "text-yellow-600"
-      };
-    }
-    return null;
-  };
 
   if (isLoading) {
     return (
@@ -572,7 +699,7 @@ export function ProductDetails({ productId }: { productId: string }) {
   if (error || !product) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">{error || 'Product not found'}</p>
+        <p className="text-muted-foreground">{error || "Product not found"}</p>
       </div>
     );
   }
@@ -580,12 +707,14 @@ export function ProductDetails({ productId }: { productId: string }) {
   const currentVariant = product.variants[selectedVariant];
 
   // Calculate average rating
-  const averageRating = reviews.length 
-    ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1)
-    : '0.0';
+  const averageRating = reviews.length
+    ? (
+        reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
+      ).toFixed(1)
+    : "0.0";
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-10">
+    <div className="container max-w-7xl mx-auto px-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Images */}
         <div className="space-y-4">
@@ -597,7 +726,6 @@ export function ProductDetails({ productId }: { productId: string }) {
               className="object-cover"
               priority
             />
-           
           </div>
 
           {/* Thumbnail Images */}
@@ -626,7 +754,7 @@ export function ProductDetails({ productId }: { productId: string }) {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">{product.name}</h1>
-            
+
             {/* Price Display */}
             <div className="mt-4 flex items-baseline gap-4">
               {product.saleType ? (
@@ -653,9 +781,7 @@ export function ProductDetails({ productId }: { productId: string }) {
                       <span className="text-xl text-muted-foreground line-through">
                         {formatPrice(product.price)}
                       </span>
-                      <Badge>
-                        {product.discountPercent}% OFF
-                      </Badge>
+                      <Badge>{product.discountPercent}% OFF</Badge>
                     </>
                   )}
                 </>
@@ -665,36 +791,33 @@ export function ProductDetails({ productId }: { productId: string }) {
             {/* Savings Display */}
             {product.saleType ? (
               <p className="mt-2 text-sm text-red-600">
-                You save {formatPrice(product.salePrice - product.discountedSalePrice)}
+                You save{" "}
+                {formatPrice(product.salePrice - product.discountedSalePrice)}
               </p>
-            ) : product.discountPercent > 0 && (
-              <p className="mt-2 text-sm text-green-600">
-                You save {formatPrice(product.price - product.discountedPrice)}
-              </p>
+            ) : (
+              product.discountPercent > 0 && (
+                <p className="mt-2 text-sm text-green-600">
+                  You save{" "}
+                  {formatPrice(product.price - product.discountedPrice)}
+                </p>
+              )
             )}
           </div>
 
           {/* Color Selection */}
           <div className="space-y-3">
-            <span className="text-sm font-medium">Color: {currentVariant.colorName}</span>
+            <span className="text-sm font-medium">
+              Color: {currentVariant.colorName}
+            </span>
             <div className="flex gap-2">
               {product.variants.map((variant, index) => (
-                <button
+                <VariantButton
                   key={variant.color._id}
-                  onClick={() => {
-                    setSelectedVariant(index);
-                    setSelectedImage(variant.images[0]);
-                  }}
-                  className={cn(
-                    "w-9 h-9 rounded-full transition-all",
-                    selectedVariant === index && "ring-2 ring-black ring-offset-2"
-                  )}
-                >
-                  <div
-                    className="w-full h-full rounded-full"
-                    style={{ backgroundColor: variant.color.value }}
-                  />
-                </button>
+                  variant={variant}
+                  index={index}
+                  isSelected={selectedVariant === index}
+                  onClick={() => handleColorSelect(index)}
+                />
               ))}
             </div>
           </div>
@@ -703,20 +826,14 @@ export function ProductDetails({ productId }: { productId: string }) {
           <div className="space-y-3">
             <span className="text-sm font-medium">Size</span>
             <div className="grid grid-cols-6 gap-2">
-              {sortSizes(product.variants[selectedVariant].sizes).map((size) => (
-                <button
+              {sortedSizes.map((size) => (
+                <SizeButton
                   key={size.size}
-                  onClick={() => setSelectedSize(size.size)}
-                  disabled={size.stock === 0}
-                  className={cn(
-                    "py-2 text-sm border rounded-md transition-colors",
-                    size.stock === 0 && "bg-gray-50 text-gray-400 cursor-not-allowed",
-                    selectedSize === size.size && "border-black bg-black text-white",
-                    size.stock > 0 && selectedSize !== size.size && "hover:border-gray-400"
-                  )}
-                >
-                  {size.size}
-                </button>
+                  size={size}
+                  isSelected={selectedSize === size.size}
+                  isDisabled={size.stock === 0}
+                  onClick={() => handleSizeSelect(size.size)}
+                />
               ))}
             </div>
           </div>
@@ -725,41 +842,47 @@ export function ProductDetails({ productId }: { productId: string }) {
           <div className="space-y-2">
             <Label>Quantity</Label>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={decrementQuantity}
-                disabled={quantity <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <Input
-                type="number"
-                min={1}
-                max={availableStock}
-                value={quantity}
-                onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                className="w-20 text-center"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={incrementQuantity}
-                disabled={quantity >= availableStock}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              
+              {!isInCart && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={decrementQuantity}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={availableStock}
+                    value={quantity}
+                    onChange={(e) =>
+                      handleQuantityChange(Number(e.target.value))
+                    }
+                    className={cn("w-20 text-center", noSpinnerClass)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={incrementQuantity}
+                    disabled={quantity >= availableStock}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+
               {/* Stock Warning */}
-              {availableStock > 0 && getStockWarning(availableStock) && (
-                <div className={cn(
-                  "flex items-center gap-1 ml-2",
-                  getStockWarning(availableStock)?.className
-                )}>
+              {availableStock > 0 && stockWarning && (
+                <div
+                  className={cn(
+                    "flex items-center gap-1 ml-2",
+                    stockWarning?.className
+                  )}
+                >
                   <AlertCircle className="h-4 w-4" />
-                  <span className="text-sm">
-                    {getStockWarning(availableStock)?.message}
-                  </span>
+                  <span className="text-sm">{stockWarning?.message}</span>
                 </div>
               )}
             </div>
@@ -769,13 +892,17 @@ export function ProductDetails({ productId }: { productId: string }) {
           <div className="flex gap-3">
             {!isInCart ? (
               <>
-                <Button 
+                <Button
                   className="flex-1 bg-black hover:bg-black/90"
                   onClick={handleAddToCart}
-                  disabled={isAddingToCart || !selectedSize}
+                  disabled={
+                    isAddingToCart || !selectedSize || availableStock === 0
+                  }
                 >
                   {isAddingToCart ? (
                     <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : availableStock === 0 ? (
+                    "Out of Stock"
                   ) : (
                     <>
                       <ShoppingCart className="mr-2 h-4 w-4" />
@@ -783,22 +910,19 @@ export function ProductDetails({ productId }: { productId: string }) {
                     </>
                   )}
                 </Button>
-                <Button 
-                  className="flex-1"
-                  variant="outline"
-                  onClick={handleBuyNow}
-                  disabled={isAddingToCart || !selectedSize}
-                >
-                  Buy Now
-                </Button>
               </>
             ) : (
-              <Button 
-                className="w-full bg-black hover:bg-black/90"
-                onClick={() => router.push('/checkout')}
-              >
-                Buy Now
-              </Button>
+              <div className="flex flex-col gap-2 w-full">
+                <div className="text-sm text-muted-foreground">
+                  Already in cart
+                </div>
+                <Button
+                  className="bg-black hover:bg-black/90"
+                  onClick={() => router.push("/checkout")}
+                >
+                  Go to Checkout
+                </Button>
+              </div>
             )}
           </div>
 
@@ -813,14 +937,14 @@ export function ProductDetails({ productId }: { productId: string }) {
                   placeholder="Enter Pincode"
                   value={pincode}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
                     setPincode(value);
                     if (deliveryInfo) setDeliveryInfo(null);
                   }}
                   className="pl-9 h-9"
                 />
               </div>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={checkDelivery}
                 disabled={checkingPincode || pincode.length !== 6}
@@ -831,7 +955,9 @@ export function ProductDetails({ productId }: { productId: string }) {
                     <span className="h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
                     Checking...
                   </>
-                ) : 'Check'}
+                ) : (
+                  "Check"
+                )}
               </Button>
             </div>
 
@@ -848,7 +974,8 @@ export function ProductDetails({ productId }: { productId: string }) {
                           Delivery Available
                         </div>
                         <div className="text-sm text-gray-600 mt-0.5">
-                          Expected by {format(deliveryInfo.expectedDate!, 'EEEE, MMMM d')}
+                          Expected by{" "}
+                          {format(deliveryInfo.expectedDate!, "EEEE, MMMM d")}
                         </div>
                       </div>
                       <div className="text-xs text-gray-500 text-right">
@@ -864,13 +991,13 @@ export function ProductDetails({ productId }: { productId: string }) {
           {/* Product Information */}
           <Tabs defaultValue="description" className="mt-6">
             <TabsList className="border-b rounded-none h-auto p-0 bg-transparent space-x-6">
-              <TabsTrigger 
+              <TabsTrigger
                 value="description"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-black bg-transparent px-0"
               >
                 Description
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="specifications"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-black bg-transparent px-0"
               >
@@ -887,37 +1014,43 @@ export function ProductDetails({ productId }: { productId: string }) {
             </TabsContent>
             <TabsContent value="specifications" className="mt-4">
               <div className="grid grid-cols-2 gap-4">
-                {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
-                  value && (
-                    <div key={key} className="space-y-1">
-                      <dt className="text-xs text-gray-500 capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </dt>
-                      <dd className="text-sm">{value}</dd>
-                    </div>
-                  )
-                ))}
+                {product.specifications &&
+                  Object.entries(product.specifications).map(
+                    ([key, value]) =>
+                      value && (
+                        <div key={key} className="space-y-1">
+                          <dt className="text-xs text-gray-500 capitalize">
+                            {key.replace(/([A-Z])/g, " $1").trim()}
+                          </dt>
+                          <dd className="text-sm">{value}</dd>
+                        </div>
+                      )
+                  )}
               </div>
             </TabsContent>
             <TabsContent value="reviews" className="mt-4">
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                  <h3 className="text-lg font-medium">Customer Reviews</h3>
+                    <h3 className="text-lg font-medium">Customer Reviews</h3>
                     <p className="text-sm text-muted-foreground">
-                      {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                      {reviews.length}{" "}
+                      {reviews.length === 1 ? "review" : "reviews"}
                     </p>
                   </div>
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(true)}
+                      >
                         Write a Review
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
                         <DialogTitle>
-                          {editingReview ? 'Edit Review' : 'Write a Review'}
+                          {editingReview ? "Edit Review" : "Write a Review"}
                         </DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 mt-4">
@@ -952,17 +1085,21 @@ export function ProductDetails({ productId }: { productId: string }) {
                           />
                         </div>
                         <Button
-                          onClick={editingReview ? handleEditReview : handleAddReview}
+                          onClick={
+                            editingReview ? handleEditReview : handleAddReview
+                          }
                           className="w-full"
                           disabled={!newComment.trim() || isSubmitting}
                         >
                           {isSubmitting ? (
                             <>
                               <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                              {editingReview ? 'Updating...' : 'Submitting...'}
+                              {editingReview ? "Updating..." : "Submitting..."}
                             </>
+                          ) : editingReview ? (
+                            "Update Review"
                           ) : (
-                            editingReview ? 'Update Review' : 'Submit Review'
+                            "Submit Review"
                           )}
                         </Button>
                       </div>
@@ -978,30 +1115,36 @@ export function ProductDetails({ productId }: { productId: string }) {
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10 shrink-0">
                               {review.user.image ? (
-                                <AvatarImage 
-                                  src={review.user.image} 
-                                  alt={review.user.name || 'User'} 
+                                <AvatarImage
+                                  src={review.user.image}
+                                  alt={review.user.name || "User"}
                                 />
                               ) : (
-                                <AvatarFallback 
+                                <AvatarFallback
                                   className="bg-primary/10 text-primary font-medium"
                                   delayMs={600}
                                 >
-                                {getInitials(review.user.name, review.user.email)}
-                              </AvatarFallback>
+                                  {getInitials(
+                                    review.user.name,
+                                    review.user.email
+                                  )}
+                                </AvatarFallback>
                               )}
                             </Avatar>
                             <div className="min-w-0">
                               <div className="font-medium truncate">
-                                {review.user.name || 'Anonymous User'}
+                                {review.user.name || "Anonymous User"}
                               </div>
                               {review.user.email && (
                                 <div className="text-sm text-muted-foreground truncate">
-                                {review.user.email}
-                              </div>
+                                  {review.user.email}
+                                </div>
                               )}
                               <div className="text-xs text-muted-foreground mt-0.5">
-                                {format(new Date(review.createdAt), 'MMM d, yyyy')}
+                                {format(
+                                  new Date(review.createdAt),
+                                  "MMM d, yyyy"
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1033,7 +1176,9 @@ export function ProductDetails({ productId }: { productId: string }) {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-red-600"
-                                    onClick={() => handleDeleteReview(review._id)}
+                                    onClick={() =>
+                                      handleDeleteReview(review._id)
+                                    }
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete Review
@@ -1050,7 +1195,7 @@ export function ProductDetails({ productId }: { productId: string }) {
                         </div>
                       </div>
                     ))}
-                    
+
                     {reviews.length > 2 && (
                       <div className="pt-6 border-t">
                         <div className="flex flex-col items-center gap-2">
@@ -1065,11 +1210,16 @@ export function ProductDetails({ productId }: { productId: string }) {
                             className="group relative overflow-hidden rounded-full px-8 transition-all hover:bg-primary hover:text-white"
                             asChild
                           >
-                            <Link href={`/products/${productId}/reviews`} className="flex items-center gap-2">
+                            <Link
+                              href={`/products/${productId}/reviews`}
+                              className="flex items-center gap-2"
+                            >
                               <span>View All Reviews</span>
                               <div className="flex items-center gap-0.5">
                                 <Star className="h-4 w-4 fill-current" />
-                                <span className="font-medium">{averageRating}</span>
+                                <span className="font-medium">
+                                  {averageRating}
+                                </span>
                                 <span className="text-sm text-muted-foreground">
                                   ({reviews.length})
                                 </span>
@@ -1083,9 +1233,9 @@ export function ProductDetails({ productId }: { productId: string }) {
                 ) : (
                   <div className="text-center py-12 border rounded-lg bg-gray-50">
                     <p className="text-gray-500 mb-4">No reviews yet</p>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsAddingReview(true)}
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(true)}
                       className="w-full sm:w-auto"
                     >
                       Be the first to review
@@ -1099,4 +1249,4 @@ export function ProductDetails({ productId }: { productId: string }) {
       </div>
     </div>
   );
-} 
+}

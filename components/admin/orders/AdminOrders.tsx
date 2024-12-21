@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,15 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
-import { Eye, MoreHorizontal, Search, X } from 'lucide-react';
+import { Eye, Search, X } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { OrderDetailsDialog } from './OrderDetailsDialog';
 import { Order, OrderStatus } from '@/types';
