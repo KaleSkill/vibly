@@ -7,6 +7,33 @@ import Address from '@/models/address';
 import { sendOrderConfirmationEmail } from '@/lib/nodemailer';
 import Color from '@/models/color';
 
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectDB();
+
+    const orders = await Order.find({ user: session.user.id })
+      .populate({
+        path: 'items.product',
+        select: 'name price discountedPrice variants'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch orders' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +42,6 @@ export async function POST(req: Request) {
     }
 
     const { items, shippingAddressId, paymentMethod } = await req.json();
-    console.log(items, shippingAddressId, paymentMethod);
     await connectDB();
 
     // Modify items to populate the color reference
@@ -37,16 +63,15 @@ export async function POST(req: Request) {
     }
 
     const total = populatedItems.reduce((acc: number, item: any) =>
-      acc + (item.product.saleType? item.product.discountedSalePrice: item.product.discountedPrice * item.quantity), 0
+      acc + (item.product.saleType ? item.product.discountedSalePrice : item.product.discountedPrice * item.quantity), 0
     );
 
     // Set initial status based on payment method
     const initialStatus = paymentMethod === 'cod' ? 'pending' : 'confirmed';
 
-
     const order = await Order.create({
       user: session.user.id,
-      populatedItems,
+      items: populatedItems,
       shippingAddress,
       paymentMethod,
       status: initialStatus,
