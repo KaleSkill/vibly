@@ -72,7 +72,6 @@ const paymentSchema = z.object({
 });
 
 type BasicDetailsFormValues = z.infer<typeof basicDetailsSchema>;
-type VariantFormValues = z.infer<typeof variantSchema>;
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
 const GENDERS = [
@@ -123,76 +122,6 @@ interface Category {
   _id: string;
   name: string;
   slug: string;
-}
-
-// Add PaymentOptionsForm component
-function PaymentOptionsForm({ onSubmit, onBack }: { 
-  onSubmit: (data: PaymentFormValues) => void;
-  onBack: () => void;
-}) {
-  const form = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema),
-    defaultValues: {
-      cod: true,
-      online: true,
-    },
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="cod"
-            render={({ field }) => (
-              <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">Cash on Delivery</FormLabel>
-                  <div className="text-sm text-muted-foreground">
-                    Allow customers to pay on delivery
-                  </div>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="online"
-            render={({ field }) => (
-              <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">Online Payment</FormLabel>
-                  <div className="text-sm text-muted-foreground">
-                    Allow customers to pay online
-                  </div>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <Button type="submit">Next Step</Button>
-        </div>
-      </form>
-    </Form>
-  );
 }
 
 // Add PreviewStep component

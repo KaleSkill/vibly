@@ -62,6 +62,32 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { publicId } = await req.json();
+
+    // Delete the image from Cloudinary
+    const result = await cloudinary.uploader.destroy(publicId);
+
+    if (result.result !== 'ok') {
+      throw new Error('Failed to delete image from Cloudinary');
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete image' },
+      { status: 500 }
+    );
+  }
+}
+
 export const config = {
   api: {
     bodyParser: false,

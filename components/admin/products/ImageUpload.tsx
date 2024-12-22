@@ -1,115 +1,111 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useCallback } from 'react';
 import Image from 'next/image';
-import { ImagePlus, X, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploadProps {
   value: string[];
   onChange: (value: string[]) => void;
+  onRemove: (url: string) => void;
 }
 
-export function ImageUpload({ value, onChange }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
+export function ImageUpload({ value, onChange, onRemove }: ImageUploadProps) {
   const { toast } = useToast();
 
-  const onUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-
-    setIsUploading(true);
-
+  const getPublicIdFromUrl = (url: string) => {
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
+      // Extract the public ID from URL like: https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/folder/image.jpg
+      const matches = url.match(/\/v\d+\/(.+?)\./);
+      return matches ? matches[1] : null;
+    } catch (error) {
+      return null;
+    }
+  };
 
+  const handleRemove = async (url: string) => {
+    try {
+      const publicId = getPublicIdFromUrl(url);
+      
+      if (publicId) {
         const response = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ publicId }),
         });
 
         if (!response.ok) {
-          throw new Error('Upload failed');
+          throw new Error('Failed to delete image');
         }
+      }
 
-        const data = await response.json();
-        return data.secure_url;
-      });
-
-      const uploadedUrls = await Promise.all(uploadPromises);
-      onChange([...value, ...uploadedUrls]);
+      onRemove(url);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload images",
+        description: "Failed to delete image",
         variant: "destructive",
       });
-    } finally {
-      setIsUploading(false);
-      if (e.target) {
-        e.target.value = '';
-      }
     }
-  }, [onChange, value, toast]);
+  };
 
-  const onRemove = useCallback((url: string) => {
-    onChange(value.filter((current) => current !== url));
-  }, [onChange, value]);
+  const handleDragEnd = useCallback((result: any) => {
+    if (!result.destination) return;
+
+    const items = Array.from(value);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    onChange(items);
+  }, [value, onChange]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => document.getElementById('variant-image-input')?.click()}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <ImagePlus className="h-4 w-4 mr-2" />
-          )}
-          {isUploading ? 'Uploading...' : 'Upload Images'}
-        </Button>
-        <input
-          id="variant-image-input"
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={onUpload}
-          disabled={isUploading}
-        />
-      </div>
-
-      {value.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {value.map((url) => (
-            <div key={url} className="relative aspect-square rounded-lg overflow-hidden group">
-              <Image
-                src={url}
-                alt="Variant"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => onRemove(url)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="images" direction="horizontal">
+        {(provided) => (
+          <div 
+            {...provided.droppableProps}
+            ref={provided.innerRef}
+            className="flex gap-4 overflow-x-auto pb-4 min-h-[160px] items-start"
+          >
+            {value.map((url, index) => (
+              <Draggable key={url} draggableId={url} index={index}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className="relative w-[150px] h-[150px] flex-shrink-0 rounded-lg overflow-hidden group"
+                  >
+                    <Image
+                      src={url}
+                      alt="Upload"
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleRemove(url)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 } 

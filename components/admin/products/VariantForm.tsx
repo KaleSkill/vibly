@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,8 +22,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from './ImageUpload';
-import { Plus, Trash, X } from 'lucide-react';
+import { Plus, Trash, X, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Color {
   _id: string;
@@ -65,6 +66,9 @@ const variantSchema = z.object({
 
 export function VariantForm({ colors, onSubmit, selectedVariant, onCancelEdit }: VariantFormProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [tempImages, setTempImages] = useState<{ file: File; preview: string }[]>([]);
+  const { toast } = useToast();
 
   const form = useForm({
     resolver: zodResolver(variantSchema),
@@ -75,29 +79,89 @@ export function VariantForm({ colors, onSubmit, selectedVariant, onCancelEdit }:
     },
   });
 
-  // Reset form when selectedVariant changes
   useEffect(() => {
     if (selectedVariant) {
       form.reset(selectedVariant);
       setIsEditing(true);
-    } else {
-      form.reset({
-        color: '',
-        sizes: [{ size: '', stock: 0 }],
-        images: [],
-      });
-      setIsEditing(false);
     }
   }, [selectedVariant, form]);
 
-  const handleSubmit = (data: any) => {
-    onSubmit(data);
-    if (!selectedVariant) {
-      form.reset({
-        color: '',
-        sizes: [{ size: '', stock: 0 }],
-        images: [],
+  const onFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+
+    // Create temporary previews
+    const newTempImages = Array.from(files).map(file => ({
+      file,
+      preview: URL.createObjectURL(file)
+    }));
+
+    setTempImages(prev => [...prev, ...newTempImages]);
+    form.setValue('images', [...form.getValues('images'), ...newTempImages.map(img => img.preview)]);
+
+    // Reset input
+    if (e.target) {
+      e.target.value = '';
+    }
+  }, [form]);
+
+  const handleRemoveImage = useCallback((urlOrPreview: string) => {
+    const currentImages = form.getValues('images');
+    form.setValue('images', currentImages.filter(img => img !== urlOrPreview));
+    setTempImages(prev => prev.filter(img => img.preview !== urlOrPreview));
+  }, [form]);
+
+  const handleSubmit = async (data: any) => {
+    setIsUploading(true);
+    try {
+      // Upload any temporary images first
+      const uploadPromises = tempImages.map(async ({ file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+        const uploadedData = await response.json();
+        return uploadedData.secure_url;
       });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      // Replace preview URLs with actual uploaded URLs
+      const finalImages = data.images.map((img: string) => {
+        const tempImage = tempImages.find(temp => temp.preview === img);
+        if (tempImage) {
+          // Get the corresponding uploaded URL
+          const index = tempImages.indexOf(tempImage);
+          return uploadedUrls[index];
+        }
+        return img; // Keep existing URLs as they are
+      });
+
+      // Submit with final data
+      onSubmit({ ...data, images: finalImages });
+
+      // Reset form if not editing
+      if (!selectedVariant) {
+        form.reset({
+          color: '',
+          sizes: [{ size: '', stock: 0 }],
+          images: [],
+        });
+        setTempImages([]);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload images",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -241,25 +305,56 @@ export function VariantForm({ colors, onSubmit, selectedVariant, onCancelEdit }:
           </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="images"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Images</FormLabel>
-              <FormControl>
-                <ImageUpload
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => document.getElementById('variant-image-input')?.click()}
+              disabled={isUploading}
+            >
+              <ImagePlus className="h-4 w-4 mr-2" />
+              Add Images
+            </Button>
+            <input
+              id="variant-image-input"
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={onFileSelect}
+              disabled={isUploading}
+            />
+          </div>
 
-        <Button type="submit">
-          {isEditing ? 'Update Variant' : 'Add Variant'}
+          <FormField
+            control={form.control}
+            name="images"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Images</FormLabel>
+                <FormControl>
+                  <ImageUpload
+                    value={field.value}
+                    onChange={field.onChange}
+                    onRemove={handleRemoveImage}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button type="submit" disabled={isUploading}>
+          {isUploading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {isEditing ? 'Updating...' : 'Adding...'}
+            </>
+          ) : (
+            isEditing ? 'Update Variant' : 'Add Variant'
+          )}
         </Button>
       </form>
     </Form>
