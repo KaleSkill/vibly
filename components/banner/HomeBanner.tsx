@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -10,9 +9,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Banner {
   _id: string;
-  image: string;
-  position: number;
-  active: boolean;
+  public_id:String;
+  secure_url:String;
 }
 
 export function HomeBanner() {
@@ -27,11 +25,8 @@ export function HomeBanner() {
         const response = await fetch('/api/banners');
         if (!response.ok) throw new Error('Failed to fetch banners');
         const data = await response.json();
-        // Only show active banners, sorted by position
-        const activeBanners = data
-          .filter((banner: Banner) => banner.active)
-          .sort((a: Banner, b: Banner) => a.position - b.position);
-        setBanners(activeBanners);
+        setBanners(data[0].images);
+        console.log(data[0].images)
       } catch (error) {
         console.error('Error fetching banners:', error);
         toast({
@@ -94,7 +89,7 @@ export function HomeBanner() {
             )}
           >
             <Image
-              src={banner.image}
+              src={banner.secure_url}
               alt="Banner"
               fill
               className="object-cover object-center"
