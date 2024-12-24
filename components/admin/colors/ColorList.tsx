@@ -23,14 +23,10 @@ import { useToast } from '@/hooks/use-toast';
 import { EditColorForm } from './EditColorForm';
 import { Skeleton } from "@/components/ui/skeleton";
 
-
-
-
 interface Color {
   _id: string;
   name: string;
   value: string;
-  active: boolean;
   createdAt: string;
 }
 

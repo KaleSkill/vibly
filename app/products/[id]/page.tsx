@@ -8,7 +8,7 @@ interface Props {
 export default function ProductPage({ params }: Props) {
   return (
     <div className="min-h-screen py-10">
-      <ProductDetails productId={params.id} />{" "}
+      <ProductDetails productId={params.id} />
     </div>
   );
 }

@@ -260,6 +260,7 @@ export function ProductDetails({ productId }: { productId: string }) {
 
         const data = await response.json();
         setProduct(data);
+        console.log(data)
 
         if (data.variants?.[0]?.images?.[0]) {
           setSelectedImage(data.variants[0].images[0]);

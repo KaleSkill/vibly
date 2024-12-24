@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploadProps {
   value: string[];
@@ -14,44 +13,8 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ value, onChange, onRemove }: ImageUploadProps) {
-  const { toast } = useToast();
-
-  const getPublicIdFromUrl = (url: string) => {
-    try {
-      // Extract the public ID from URL like: https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/folder/image.jpg
-      const matches = url.match(/\/v\d+\/(.+?)\./);
-      return matches ? matches[1] : null;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const handleRemove = async (url: string) => {
-    try {
-      const publicId = getPublicIdFromUrl(url);
-      
-      if (publicId) {
-        const response = await fetch('/api/admin/upload', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ publicId }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete image');
-        }
-      }
-
-      onRemove(url);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete image",
-        variant: "destructive",
-      });
-    }
+  const handleRemove = (url: string) => {
+    onRemove(url);
   };
 
   const handleDragEnd = useCallback((result: any) => {

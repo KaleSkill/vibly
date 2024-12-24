@@ -19,7 +19,6 @@ const variantSchema = new mongoose.Schema({
     ref: 'Color',
     required: true
   },
-  colorName: String,
   images: [String],
   sizes: [sizeSchema]
 });
@@ -56,18 +55,16 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  discountedPrice: {
+    type: Number,
+    min: 0,
+    required: true
+  },
   discountPercent: {
     type: Number,
     min: 0,
     max: 100,
-    default: 0
-  },
-  discountedPrice: {
-    type: Number,
-    min: 0,
-    default: function (this: mongoose.Document & { price: number }) {
-      return this.price;
-    }
+    required:true
   },
   gender: {
     type: String,
@@ -115,11 +112,11 @@ const productSchema = new mongoose.Schema({
 
 // Calculate both regular discounted price and sale discounted price
 productSchema.pre('save', function (next) {
-  // Calculate regular discounted price
-  if (this.isModified('price') || this.isModified('discountPercent')) {
-    this.discountedPrice = this.discountPercent > 0
-      ? Math.round(this.price - (this.price * (this.discountPercent / 100)))
-      : this.price;
+  // Calculate discount percentage if price and discounted price are set
+  if (this.isModified('price') || this.isModified('discountedPrice')) {
+    console.log(this.price +"   "+ this.discountedPrice);
+    const discount = ((this.price - this.discountedPrice) / this.price) * 100;
+    this.discountPercent = Math.round(discount);
   }
 
   // Calculate sale discounted price

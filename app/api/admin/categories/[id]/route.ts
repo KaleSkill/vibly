@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Category from '@/models/category';
+import Product from '@/models/product';
 
 export async function DELETE(
   req: Request,
@@ -15,6 +16,29 @@ export async function DELETE(
     }
 
     await connectDB();
+
+    const products = await Product.find({ category: params.id }).populate('variants.color').lean();
+    for (const product of products) {
+      for (const variant of product.variants) {
+        if (variant.color) {
+          await Product.findByIdAndUpdate(product._id, { $pull: { variants: { color: variant.color._id } } });
+          for (const image of variant.images) {
+            // Assuming there's a function to delete images from Cloudinary
+            const response = await fetch('/api/admin/upload', {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ publicId: image.split('/').pop().split('.')[0] })
+            });
+            if (!response.ok) {
+              throw new Error('Failed to delete image from Cloudinary');
+            }
+            await Product.updateMany({}, { $pull: { 'variants.$[].images': image } });
+          }
+        }
+      }
+    }
     const category = await Category.findByIdAndDelete(params.id);
     
     if (!category) {

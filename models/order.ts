@@ -13,8 +13,10 @@ const orderSchema = new mongoose.Schema({
       required: true
     },
     variant: {
-      color: String,
-      colorName: String,
+      color: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Color',
+      },
       size: String
     },
     quantity: {
