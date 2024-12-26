@@ -127,12 +127,7 @@ export async function PUT(
 
     const product = await Product.findByIdAndUpdate(
       params.id,
-      {
-        ...data,
-        discountedPrice: data.discountPercent > 0 
-          ? Math.round(data.price - (data.price * (data.discountPercent / 100)))
-          : data.price,
-      },
+      data,
       { new: true }
     );
 

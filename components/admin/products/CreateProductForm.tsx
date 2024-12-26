@@ -42,7 +42,7 @@ const basicDetailsSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
-  discountPercent: z.string().regex(/^\d{1,2}(\.\d{1,2})?$/, 'Invalid discount percentage'),
+  discountedPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
   specifications: z.object({
     material: z.string().optional(),
     fit: z.string().optional(),
@@ -72,7 +72,6 @@ const paymentSchema = z.object({
 });
 
 type BasicDetailsFormValues = z.infer<typeof basicDetailsSchema>;
-type PaymentFormValues = z.infer<typeof paymentSchema>;
 
 const GENDERS = [
   { id: 'men', label: "Men's Fashion" },
@@ -125,16 +124,16 @@ interface Category {
 }
 
 // Add PreviewStep component
-function PreviewStep({ 
-  data, 
-  variants, 
+function PreviewStep({
+  data,
+  variants,
   categories,
   colors,
   onBack,
   onSubmit,
   isLoading,
   isEditing
-}: { 
+}: {
   data: any;
   variants: any[];
   categories: Category[];
@@ -144,7 +143,6 @@ function PreviewStep({
   isLoading: boolean;
   isEditing?: boolean;
 }) {
-  const category = categories.find(c => c._id === data.category);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -154,9 +152,9 @@ function PreviewStep({
     }).format(price);
   };
 
-  const finalPrice = data.discountPercent 
-    ? Math.round(data.price - (data.price * (data.discountPercent / 100)))
-    : data.price;
+  const discountedPercent = data.discountedPrice
+    ? Math.round(((data.price - data.discountedPrice) / data.price) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -173,22 +171,22 @@ function PreviewStep({
               <label className="text-sm text-muted-foreground">Description</label>
               <p className="text-sm">{data.description}</p>
             </div>
-            
+
             {/* Price Details Card */}
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Original Price:</span>
                 <span className="font-medium">{formatPrice(data.price)}</span>
               </div>
-              {data.discountPercent > 0 && (
+              {discountedPercent > 0 && (
                 <>
                   <div className="flex justify-between items-center text-red-600">
                     <span className="text-sm">Discount:</span>
-                    <span className="font-medium">-{data.discountPercent}%</span>
+                    <span className="font-medium">-{discountedPercent}%</span>
                   </div>
                   <div className="flex justify-between items-center text-green-600 pt-2 border-t">
                     <span className="font-medium">Final Price:</span>
-                    <span className="text-lg font-bold">{formatPrice(finalPrice)}</span>
+                    <span className="text-lg font-bold">{formatPrice(data.discountedPrice)}</span>
                   </div>
                 </>
               )}
@@ -200,16 +198,19 @@ function PreviewStep({
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <h3 className="font-semibold mb-4 pb-2 border-b">Specifications</h3>
           <div className="grid grid-cols-2 gap-4">
-            {Object.entries(data.specifications || {}).map(([key, value]) => (
-              value && (
-                <div key={key}>
-                  <label className="text-sm text-muted-foreground capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </label>
-                  <p className="font-medium">{value}</p>
-                </div>
-              )
-            ))}
+            {Object.entries(data.specifications || {}).map(([key, value]) => {
+              if (typeof value === 'string' && value) {
+                return (
+                  <div key={key}>
+                    <label className="text-sm text-muted-foreground capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                    <p className="font-medium">{value}</p>
+                  </div>
+                );
+              }
+              return null;
+            })}
           </div>
         </div>
       </div>
@@ -221,7 +222,7 @@ function PreviewStep({
           {variants.map((variant, index) => {
             // Find the color object to get the actual color value
             const colorObj = colors.find(c => c._id === variant.color);
-            
+
             return (
               <div key={index} className="rounded-lg border p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -229,12 +230,9 @@ function PreviewStep({
                     className="w-6 h-6 rounded-full border shadow-sm"
                     style={{ backgroundColor: colorObj?.value || '#ffffff' }}
                   />
-                  <span className="font-medium">{variant.colorName}</span>
-                  <span className="text-sm text-muted-foreground">
-                    ({colorObj?.value || 'N/A'})
-                  </span>
+                  {colorObj?.name || 'N/A'}
                 </div>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">
                   {variant.images.map((image: string, imgIndex: number) => (
                     <div key={imgIndex} className="relative aspect-square rounded-md overflow-hidden">
@@ -307,7 +305,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
       name: '',
       description: '',
       price: '',
-      discountPercent: '',
+      discountedPrice: '',
       specifications: {
         material: '',
         fit: '',
@@ -328,7 +326,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
         name: initialData.name,
         description: initialData.description,
         price: initialData.price.toString(),
-        discountPercent: initialData.discountPercent.toString(),
+        discountedPrice: (initialData.discountedPrice || initialData.price).toString(),
         specifications: initialData.specifications || {
           material: '',
           fit: '',
@@ -343,6 +341,8 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
       setFormData({
         ...initialData,
         category: initialData.category._id,
+        price: parseFloat(initialData.price),
+        discountedPrice: parseFloat(initialData.discountedPrice || initialData.price),
       });
       setVariants(initialData.variants);
       setPaymentOptions(initialData.paymentOptions || { cod: true, online: true });
@@ -357,7 +357,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
           fetch('/api/admin/colors'),
           fetch('/api/admin/categories')
         ]);
-        
+
         const [colorsData, categoriesData] = await Promise.all([
           colorsRes.json(),
           categoriesRes.json()
@@ -384,7 +384,11 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
 
     const newVariant = {
       ...data,
-      colorName: color.name,
+      color: {
+        _id: color._id,
+        name: color.name,
+        value: color.value
+      }
     };
 
     if (editingIndex !== null) {
@@ -394,7 +398,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
       setVariants(updatedVariants);
       setEditingVariant(null);
       setEditingIndex(null);
-      setIsEditingVariant(false); // Hide edit form
+      setIsEditingVariant(false);
       toast({
         title: "Success",
         description: "Variant updated successfully",
@@ -410,19 +414,45 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
   };
 
   const handleEditVariant = (variant: any, index: number) => {
-    setEditingVariant(variant);
+    // Convert existing variant data to match form structure
+    const editableVariant = {
+      ...variant,
+      color: variant.color._id || variant.color, // Handle both populated and unpopulated color
+      images: variant.images,
+      tempImages: [], // Initialize empty tempImages array
+    };
+
+    setEditingVariant(editableVariant);
     setEditingIndex(index);
-    setIsEditingVariant(true); // Show edit form
+    setIsEditingVariant(true);
   };
 
   const handleCancelEdit = () => {
     setEditingVariant(null);
     setEditingIndex(null);
-    setIsEditingVariant(false); // Hide edit form
+    setIsEditingVariant(false);
   };
 
   const handleBasicDetailsSubmit = (data: BasicDetailsFormValues) => {
-    setFormData({ ...formData, ...data });
+    // Validate that discounted price is not higher than original price
+    const price = parseFloat(data.price);
+    const discountedPrice = parseFloat(data.discountedPrice);
+
+    if (discountedPrice > price) {
+      toast({
+        title: "Error",
+        description: "Discounted price cannot be higher than original price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      ...data,
+      price: parseFloat(data.price),
+      discountedPrice: parseFloat(data.discountedPrice || data.price)
+    });
     setStep(2);
   };
 
@@ -431,15 +461,10 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
     setStep(3);
   };
 
-  const handlePaymentOptionsSubmit = (data: PaymentFormValues) => {
-    setFormData({ ...formData, paymentOptions: data });
-    setStep(5);
-  };
-
   const handleCreateProduct = async () => {
     try {
-      if (!formData.name || !formData.price || !formData.description || 
-          !formData.category || !formData.gender || variants.length === 0) {
+      if (!formData.name || !formData.price || !formData.description || !formData.discountedPrice ||
+        !formData.category || !formData.gender || variants.length === 0) {
         toast({
           title: "Error",
           description: "Please fill all required fields",
@@ -449,11 +474,59 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
       }
 
       setIsLoading(true);
+
+      // Upload all variant images first
+      const processedVariants = await Promise.all(
+        variants.map(async (variant) => {
+          // Handle image uploads
+          const finalImages = await Promise.all(
+            variant.images.map(async (img: string) => {
+              // If the image is already a URL (starts with http/https), keep it as is
+              if (img.startsWith('http')) {
+                return img;
+              }
+
+              // Otherwise, find the corresponding temp image and upload it
+              const tempImage = variant.tempImages?.find(temp => temp.preview === img);
+              if (!tempImage) {
+                throw new Error('Missing image file');
+              }
+
+              const formData = new FormData();
+              formData.append('file', tempImage.file);
+
+              const response = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (!response.ok) throw new Error('Failed to upload image');
+              const uploadedData = await response.json();
+              return uploadedData.secure_url;
+            })
+          );
+
+          // Return processed variant without temp data
+          const { tempImages, ...variantData } = variant;
+          return {
+            ...variantData,
+            images: finalImages,
+          };
+        })
+      );
+      console.log(formData.discountedPrice);
+      console.log(formData)
+
       const productData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
-        discountPercent: formData.discountPercent ? parseFloat(formData.discountPercent) : 0,
+        discountedPrice: parseFloat(formData.discountedPrice),
+        discountPercent: Math.round(
+          ((parseFloat(formData.price) -
+            parseFloat(formData.discountedPrice)) /
+            parseFloat(formData.price)) * 100
+        ),
         category: formData.category,
         gender: formData.gender,
         specifications: {
@@ -466,20 +539,13 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
           neckType: formData.specifications?.neckType || '',
           sleeveType: formData.specifications?.sleeveType || '',
         },
-        variants: variants.map(variant => ({
-          color: variant.color,
-          colorName: variant.colorName,
-          images: variant.images,
-          sizes: variant.sizes.map((size: any) => ({
-            size: size.size,
-            stock: parseInt(size.stock),
-          })),
-        })),
+        variants: processedVariants,
         paymentOptions: paymentOptions,
         status: 'active',
       };
+      console.log(productData)
 
-      const url = isEditing 
+      const url = isEditing
         ? `/api/admin/products/${initialData._id}`
         : '/api/admin/products';
 
@@ -501,11 +567,14 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
       });
       router.push('/admin/products');
       router.refresh();
+
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: isEditing ? "Failed to update product" : "Failed to create product",
+        description: isEditing
+          ? "Failed to update product. Please try again."
+          : "Failed to create product. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -555,12 +624,12 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       <FormItem>
                         <FormLabel>Price (₹)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             placeholder="1200"
                             className={cn(noSpinnerClass)}
                             onWheel={preventWheelChange}
-                            {...field} 
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -569,12 +638,18 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                   />
                   <FormField
                     control={basicDetailsForm.control}
-                    name="discountPercent"
+                    name="discountedPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Discount (%)</FormLabel>
+                        <FormLabel>Discounted Price (₹)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0" {...field} />
+                          <Input
+                            type="number"
+                            placeholder="1000"
+                            className={cn(noSpinnerClass)}
+                            onWheel={preventWheelChange}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -589,10 +664,10 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter product description" 
+                        <Textarea
+                          placeholder="Enter product description"
                           className="resize-none"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -719,29 +794,27 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                       {formatIndianPrice(Number(basicDetailsForm.watch('price')))}
                     </span>
                   </div>
-                  {basicDetailsForm.watch('discountPercent') && Number(basicDetailsForm.watch('discountPercent')) > 0 && (
-                    <>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-red-500">Discount Amount:</span>
-                        <span className="text-red-500">
-                          -{formatIndianPrice(
-                            Number(basicDetailsForm.watch('price')) * 
-                            (Number(basicDetailsForm.watch('discountPercent')) / 100)
-                          )}
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t flex justify-between items-center">
-                        <span className="font-medium">Final Price:</span>
-                        <span className="text-lg font-bold text-green-600">
-                          {formatIndianPrice(
-                            Number(basicDetailsForm.watch('price')) - 
-                            (Number(basicDetailsForm.watch('price')) * 
-                            (Number(basicDetailsForm.watch('discountPercent')) / 100))
-                          )}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  {basicDetailsForm.watch('discountedPrice') &&
+                    Number(basicDetailsForm.watch('discountedPrice')) < Number(basicDetailsForm.watch('price')) && (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-red-500">Discount:</span>
+                          <span className="text-red-500">
+                            {Math.round(
+                              ((Number(basicDetailsForm.watch('price')) -
+                                Number(basicDetailsForm.watch('discountedPrice'))) /
+                                Number(basicDetailsForm.watch('price'))) * 100
+                            )}%
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t flex justify-between items-center">
+                          <span className="font-medium">Final Price:</span>
+                          <span className="text-lg font-bold text-green-600">
+                            {formatIndianPrice(Number(basicDetailsForm.watch('discountedPrice')))}
+                          </span>
+                        </div>
+                      </>
+                    )}
                 </div>
               )}
 
@@ -817,7 +890,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                 onCancelEdit={handleCancelEdit}
               />
             </div>
-            
+
             {!isEditingVariant && variants.length > 0 && (
               <div>
                 <h4 className="font-medium mb-4">Added Variants</h4>
@@ -833,7 +906,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                             className="w-6 h-6 rounded-full border"
                             style={{ backgroundColor: colors.find(c => c._id === variant.color)?.value }}
                           />
-                          <span className="font-medium">{variant.colorName}</span>
+                          <span className="font-medium">{variant.color.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -913,7 +986,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                   </div>
                   <Switch
                     checked={paymentOptions.cod}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setPaymentOptions(prev => ({ ...prev, cod: checked }))
                     }
                   />
@@ -927,7 +1000,7 @@ export function CreateProductForm({ initialData, isEditing = false }: CreateProd
                   </div>
                   <Switch
                     checked={paymentOptions.online}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       setPaymentOptions(prev => ({ ...prev, online: checked }))
                     }
                   />

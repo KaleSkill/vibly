@@ -22,6 +22,15 @@ interface SortQuery {
   [key: string]: 1 | -1;
 }
 
+interface ProductVariant {
+  color: string;
+  images: string[];
+  sizes: Array<{
+    size: string;
+    stock: number;
+  }>;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -103,15 +112,6 @@ export async function GET(request: Request) {
   }
 }
 
-interface ProductVariant {
-  color: string;
-  images: string[];
-  sizes: Array<{
-    size: string;
-    stock: number;
-  }>;
-}
-
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       description: data.description,
       specifications: data.specifications,
       price: data.price,
-      discountPercent: data.discountPercent || 0,
+      discountedPrice: data.discountedPrice,
       gender: data.gender,
       category: data.category,
       variants: data.variants.map((variant: ProductVariant) => ({

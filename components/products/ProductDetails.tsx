@@ -260,6 +260,7 @@ export function ProductDetails({ productId }: { productId: string }) {
 
         const data = await response.json();
         setProduct(data);
+        console.log(data)
 
         if (data.variants?.[0]?.images?.[0]) {
           setSelectedImage(data.variants[0].images[0]);
@@ -750,7 +751,7 @@ export function ProductDetails({ productId }: { productId: string }) {
             <h1 className="text-3xl font-bold">{product.name}</h1>
 
             {/* Price Display */}
-            <div className="mt-4 flex items-baseline gap-4">
+            <div className="mt-4 flex items-center gap-4">
               {product.saleType ? (
                 // Sale Price Display
                 <>
@@ -801,7 +802,7 @@ export function ProductDetails({ productId }: { productId: string }) {
           {/* Color Selection */}
           <div className="space-y-3">
             <span className="text-sm font-medium">
-              Color: {currentVariant.color.name}
+              Color : {currentVariant.color.name}
             </span>
             <div className="flex gap-2">
               {product.variants.map((variant, index) => (

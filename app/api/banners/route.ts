@@ -5,9 +5,7 @@ import Banner from '@/models/banner';
 export async function GET() {
   try {
     await connectDB();
-    const banners = await Banner.find({ active: true })
-      .sort({ position: 1 })
-      .lean();
+    const banners = await Banner.find()
     
     return NextResponse.json(banners);
   } catch (error) {

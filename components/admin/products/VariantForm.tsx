@@ -112,56 +112,31 @@ export function VariantForm({ colors, onSubmit, selectedVariant, onCancelEdit }:
   }, [form]);
 
   const handleSubmit = async (data: any) => {
-    setIsUploading(true);
     try {
-      // Upload any temporary images first
-      const uploadPromises = tempImages.map(async ({ file }) => {
-        const formData = new FormData();
-        formData.append('file', file);
+      // Instead of uploading, just pass the temporary files along with the data
+      const variantData = {
+        ...data,
+        tempImages: tempImages, // Pass the temporary image files
+        images: data.images,    // Keep the existing/preview URLs
+      };
 
-        const response = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
-        });
+      onSubmit(variantData);
 
-        if (!response.ok) throw new Error('Upload failed');
-        const uploadedData = await response.json();
-        return uploadedData.secure_url;
+      // Reset form after submission
+      form.reset({
+        color: '',
+        sizes: [{ size: '', stock: 0 }],
+        images: [],
       });
-
-      const uploadedUrls = await Promise.all(uploadPromises);
-
-      // Replace preview URLs with actual uploaded URLs
-      const finalImages = data.images.map((img: string) => {
-        const tempImage = tempImages.find(temp => temp.preview === img);
-        if (tempImage) {
-          // Get the corresponding uploaded URL
-          const index = tempImages.indexOf(tempImage);
-          return uploadedUrls[index];
-        }
-        return img; // Keep existing URLs as they are
-      });
-
-      // Submit with final data
-      onSubmit({ ...data, images: finalImages });
-
-      // Reset form if not editing
-      if (!selectedVariant) {
-        form.reset({
-          color: '',
-          sizes: [{ size: '', stock: 0 }],
-          images: [],
-        });
-        setTempImages([]);
-      }
+      setTempImages([]);
+      setIsEditing(false);
+      
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload images",
+        description: "Failed to process variant data",
         variant: "destructive",
       });
-    } finally {
-      setIsUploading(false);
     }
   };
 

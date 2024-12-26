@@ -53,7 +53,7 @@ export function ProductView({ productId }: ProductViewProps) {
         const response = await fetch(`/api/admin/products/${productId}`);
         if (!response.ok) throw new Error('Failed to fetch product');
         const data = await response.json();
-        setProduct(data);
+        setProduct(data);        console.log(data)
       } catch (error) {
         toast({
           title: "Error",

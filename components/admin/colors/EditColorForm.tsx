@@ -21,14 +21,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 const colorSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   value: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Invalid hex color code'),
-  active: z.boolean().default(true),
 });
 
 type ColorFormValues = z.infer<typeof colorSchema>;
@@ -37,7 +35,6 @@ interface Color {
   _id: string;
   name: string;
   value: string;
-  active: boolean;
 }
 
 interface EditColorFormProps {
@@ -56,7 +53,6 @@ export function EditColorForm({ color, trigger, onSuccess }: EditColorFormProps)
     defaultValues: {
       name: color.name,
       value: color.value,
-      active: color.active,
     },
   });
 
@@ -125,26 +121,6 @@ export function EditColorForm({ color, trigger, onSuccess }: EditColorFormProps)
                     </FormControl>
                   </div>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
-                    <div className="text-sm text-muted-foreground">
-                      Color will be available for products when active
-                    </div>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
                 </FormItem>
               )}
             />

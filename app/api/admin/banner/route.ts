@@ -1,10 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Banner from '@/models/banner';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import mongoose from 'mongoose';
+
+export async function GET() {
+  try {
+    await connectDB();
+
+    // Get the banner document or create one if it doesn't exist
+    let banner = await Banner.findOne({});
+    
+    if (!banner) {
+      banner = await Banner.create({ images: [] });
+    }
+
+    return NextResponse.json(banner);
+  } catch (error: any) {
+    console.error('Error fetching banner:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch banner' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(req: Request) {
+  let mongoSession;
+
   try {
     const session = await getServerSession(authOptions);
     if (session?.user?.role !== 'admin') {
@@ -12,58 +36,40 @@ export async function POST(req: Request) {
     }
 
     await connectDB();
-    const data = await req.json();
+    const { images } = await req.json();
 
-    // If no position provided, find the next available position
-    if (!data.position) {
-      const banners = await Banner.find().sort({ position: 1 });
-      const takenPositions = banners.map(b => b.position);
-      let position = 1;
-      while (takenPositions.includes(position) && position <= 10) {
-        position++;
+    mongoSession = await mongoose.startSession();
+    mongoSession.startTransaction();
+
+    try {
+      // Get or create the banner document
+      let banner = await Banner.findOne({}).session(mongoSession);
+      
+      if (!banner) {
+        banner = await Banner.create([{ images: [] }], { session: mongoSession });
+        banner = banner[0];
       }
-      if (position > 10) {
-        return NextResponse.json(
-          { error: 'No positions available' },
-          { status: 400 }
-        );
-      }
-      data.position = position;
+
+      // Update images array
+      banner.images = images;
+
+      // Save changes
+      await banner.save({ session: mongoSession });
+
+      await mongoSession.commitTransaction();
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      if (mongoSession) await mongoSession.abortTransaction();
+      throw error;
     }
-
-    // Validate required fields
-    if (!data.image) {
-      return NextResponse.json(
-        { error: 'Image is required' },
-        { status: 400 }
-      );
-    }
-
-    const banner = await Banner.create({
-      image: data.image,
-      position: data.position,
-      active: true
-    });
-
-    return NextResponse.json(banner);
   } catch (error: any) {
-    console.error('Error creating banner:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create banner' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET() {
-  try {
-    await connectDB();
-    const banners = await Banner.find().sort({ position: 1 });
-    return NextResponse.json(banners);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch banners' },
-      { status: 500 }
-    );
+    console.error('Error processing batch update:', error);
+    return NextResponse.json({ 
+      error: error.message || 'Failed to process batch update' 
+    }, { 
+      status: 500 
+    });
+  } finally {
+    if (mongoSession) await mongoSession.endSession();
   }
 } 
