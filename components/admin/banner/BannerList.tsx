@@ -318,7 +318,7 @@ export function BannerList() {
               ref={provided.innerRef} 
               className="space-y-3"
             >
-              {banner?.images.map((image, index) => (
+              {banner?.images?.map((image, index) => (
                 <Draggable 
                   key={image.public_id} 
                   draggableId={image.public_id} 
@@ -385,7 +385,7 @@ export function BannerList() {
         </Droppable>
       </DragDropContext>
 
-      {banner?.images.length === 0 && (
+      {banner?.images?.length === 0 && (
         <Card className="p-12 text-center">
           <div className="flex flex-col items-center gap-2">
             <ImagePlus className="h-8 w-8 text-gray-400" />
@@ -398,9 +398,7 @@ export function BannerList() {
       )}
     </div>
   );
-}
-
-function LoadingSkeleton() {
+}function LoadingSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -429,3 +427,4 @@ function LoadingSkeleton() {
     </div>
   );
 }
+

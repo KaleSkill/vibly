@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { CartSheet } from "../cart/CartSheet";
 import { SearchResults } from '../search/SearchResults';
 import { useState, useRef, useEffect } from 'react';
+import Image from "next/image";
 
 export function Header() {
   const { data: session } = useSession();
@@ -33,7 +34,14 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="text-2xl font-bold text-primary">
-              Vibly
+            <Image 
+            src="/logo.png" 
+            alt="Vibly Logo" 
+            width={80} 
+            height={20} 
+            // className="h-auto w-auto"
+            priority
+          />
             </Link>
           </div>
 
