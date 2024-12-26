@@ -59,7 +59,7 @@ export function SearchResults({
   if (!query) return null;
 
   return (
-    <div className="absolute top-full left-0 right-0 bg-white border rounded-lg shadow-lg mt-1 max-h-[400px] overflow-y-auto z-50">
+    <div className="md:absolute md:top-full md:left-0 md:right-0 bg-white md:border md:rounded-lg md:shadow-lg md:mt-1 max-h-full md:max-h-[400px] overflow-y-auto z-50">
       {isLoading ? (
         <div className="p-4 text-center">
           <Loader2 className="h-6 w-6 animate-spin mx-auto" />
@@ -70,7 +70,7 @@ export function SearchResults({
             <Link
               key={product._id}
               href={`/products/${product._id}`}
-              className="flex items-center gap-4 p-2 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors"
               onClick={onClose}
             >
               <div className="relative w-12 h-12">
