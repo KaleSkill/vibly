@@ -121,6 +121,8 @@ export async function POST(req: Request) {
 
     const data = await req.json();
 
+    const discount = ((data.price - data.discountedPrice) / data.price) * 100;
+
     await connectDB();
 
     // Create new product
@@ -130,6 +132,7 @@ export async function POST(req: Request) {
       specifications: data.specifications,
       price: data.price,
       discountedPrice: data.discountedPrice,
+      discountPercent: Math.round(discount),
       gender: data.gender,
       category: data.category,
       variants: data.variants.map((variant: ProductVariant) => ({
